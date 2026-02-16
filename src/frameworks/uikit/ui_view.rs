@@ -39,6 +39,9 @@ pub struct AnimationBlock {
     pub did_stop_selector: Option<SEL>,
     pub duration: NSTimeInterval,
     pub delay: NSTimeInterval,
+    pub repeat_count: f32,
+    pub repeat_autoreverses: bool,
+    pub begins_from_current_state: bool,
 }
 
 #[derive(Default)]
@@ -123,7 +126,7 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 
 + (())beginAnimations:(id)animation_id context:(MutVoidPtr)context {
-    log_dbg!("[(UIView *)beginAnimations:{:?} context:{:?}]", animation_id, context);
+    log!("[(UIView *)beginAnimations:{:?} context:{:?}]", animation_id, context);
     () = msg_class![env; CATransaction begin];
     let state = &mut env.framework_state.uikit.ui_view;
     state.animation_stack.push(AnimationBlock {
@@ -134,14 +137,22 @@ pub const CLASSES: ClassExports = objc_classes! {
         did_stop_selector: None,
         duration: 0.2, // standard default
         delay: 0.0,
+        repeat_count: 0.0,
+        repeat_autoreverses: false,
+        begins_from_current_state: false,
     });
 }
 
 + (())commitAnimations {
     let state = &mut env.framework_state.uikit.ui_view;
     if let Some(block) = state.animation_stack.pop() {
-        log_dbg!("[(UIView *)commitAnimations] id:{:?} duration:{} delay:{}", block.animation_id, block.duration, block.delay);
+        log!("[(UIView *)commitAnimations] id:{:?} duration:{} delay:{}", block.animation_id, block.duration, block.delay);
         () = msg_class![env; CATransaction commit];
+
+        let total_time = block.delay + block.duration;
+        if total_time > 0.0 {
+            env.sleep(std::time::Duration::from_secs_f64(total_time), false);
+        }
 
         if block.delegate != nil {
             if let Some(sel) = block.will_start_selector {
@@ -217,16 +228,25 @@ pub const CLASSES: ClassExports = objc_classes! {
     }
 }
 
-+ (())setAnimationRepeatCount:(f32)_repeat_count {
-    log!("TODO: [(UIView *)setAnimationRepeatCount:{}]", _repeat_count);
++ (())setAnimationRepeatCount:(f32)repeat_count {
+    let state = &mut env.framework_state.uikit.ui_view;
+    if let Some(block) = state.animation_stack.last_mut() {
+        block.repeat_count = repeat_count;
+    }
 }
 
-+ (())setAnimationRepeatAutoreverses:(bool)_repeat_autoreverses {
-    log!("TODO: [(UIView *)setAnimationRepeatAutoreverses:{}]", _repeat_autoreverses);
++ (())setAnimationRepeatAutoreverses:(bool)repeat_autoreverses {
+    let state = &mut env.framework_state.uikit.ui_view;
+    if let Some(block) = state.animation_stack.last_mut() {
+        block.repeat_autoreverses = repeat_autoreverses;
+    }
 }
 
-+ (())setAnimationBeginsFromCurrentState:(bool)_from_current_state {
-    log!("TODO: [(UIView *)setAnimationBeginsFromCurrentState:{}]", _from_current_state);
++ (())setAnimationBeginsFromCurrentState:(bool)from_current_state {
+    let state = &mut env.framework_state.uikit.ui_view;
+    if let Some(block) = state.animation_stack.last_mut() {
+        block.begins_from_current_state = from_current_state;
+    }
 }
 
 + (())setAnimationTransition:(NSInteger)_transition forView:(id)_view cache:(bool)_cache {
