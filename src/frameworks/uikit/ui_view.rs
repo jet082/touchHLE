@@ -172,11 +172,12 @@ pub const CLASSES: ClassExports = objc_classes! {
         if total_time > 0.0 {
             // Deferred callback
             let block_helper: id = msg_class![env; _touchHLE_UIViewAnimationBlock alloc];
+            let retained_delegate = retain(env, block.delegate);
             {
                 let helper = env.objc.borrow_mut::<AnimationBlockHostObject>(block_helper);
                 helper.animation_id = block.animation_id;
                 helper.context = block.context;
-                helper.delegate = retain(env, block.delegate); // Retain delegate
+                helper.delegate = retained_delegate;
                 helper.did_stop_selector = block.did_stop_selector;
             }
             let sel = env.objc.lookup_selector("_fireDidStop:").unwrap();
@@ -901,8 +902,7 @@ pub const CLASSES: ClassExports = objc_classes! {
     };
     if delegate != nil {
         if let Some(sel) = sel {
-            // Ensure delegate is still valid before calling it
-            if env.objc.get_host_object(delegate).is_some() && env.objc.object_has_method(&env.mem, delegate, sel) {
+            if env.objc.object_has_method(&env.mem, delegate, sel) {
                 log!("Sending animationDidStop callback (deferred) to {:?}", delegate);
                 let finished: id = msg_class![env; NSNumber numberWithBool:true];
                 () = msg_send(
@@ -914,6 +914,10 @@ pub const CLASSES: ClassExports = objc_classes! {
         release(env, delegate); // Release retained delegate
     }
     release(env, animation_id);
+}
+
+- (())dealloc {
+    env.objc.dealloc_object(this, &mut env.mem);
 }
 
 @end
