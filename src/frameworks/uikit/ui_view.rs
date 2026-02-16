@@ -112,15 +112,15 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 
 + (())beginAnimations:(id)_animation_id context:(MutVoidPtr)_context {
-    msg_class![env; CATransaction begin];
+    () = msg_class![env; CATransaction begin];
 }
 
 + (())commitAnimations {
-    msg_class![env; CATransaction commit];
+    () = msg_class![env; CATransaction commit];
 }
 
 + (())setAnimationDuration:(NSTimeInterval)duration {
-    msg_class![env; CATransaction setAnimationDuration:duration];
+    () = msg_class![env; CATransaction setAnimationDuration:duration];
 }
 
 // TODO: accessors etc
