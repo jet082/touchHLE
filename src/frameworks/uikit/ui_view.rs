@@ -629,8 +629,13 @@ pub const CLASSES: ClassExports = objc_classes! {
     msg![env; layer setHidden:hidden]
 }
 
+- (bool)clipsToBounds {
+    let layer = env.objc.borrow::<UIViewHostObject>(this).layer;
+    msg![env; layer masksToBounds]
+}
 - (())setClipsToBounds:(bool)clips {
-    todo_objc_setter!(this, clips);
+    let layer = env.objc.borrow::<UIViewHostObject>(this).layer;
+    msg![env; layer setMasksToBounds:clips]
 }
 
 - (bool)isOpaque {
@@ -730,6 +735,8 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 
 - (())setContentStretch:(CGRect)rect {
+    // This is used for resizable views (similar to resizable images).
+    // Not easily implementable without more complex layer contents support.
     log!("TODO: [(UIView *){:?} setContentStretch:{:?}]", this, rect);
 }
 

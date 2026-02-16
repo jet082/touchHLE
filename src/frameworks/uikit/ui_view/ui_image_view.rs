@@ -94,8 +94,10 @@ pub const CLASSES: ClassExports = objc_classes! {
 - (())setAnimationImages:(id)images { // NSArray<UIImage *>*
     todo_objc_setter!(this, images);
     // TODO: Use all images in the array instead of just the first one
-    let first_image: id = msg![env; images objectAtIndex:0u32];
-    () = msg![env; this setImage:first_image];
+    if images != nil && msg![env; images count] > 0u32 {
+        let first_image: id = msg![env; images objectAtIndex:0u32];
+        () = msg![env; this setImage:first_image];
+    }
 }
 
 - (())setAnimationDuration:(NSTimeInterval)duration { // NSArray<UIImage *>*
