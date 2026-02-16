@@ -331,6 +331,22 @@ pub const CLASSES: ClassExports = objc_classes! {
     nil
 }
 
+- (())setTitleShadowOffset:(CGSize)_offset {
+    log!("TODO: [(UIButton *)setTitleShadowOffset:{:?}]", _offset);
+}
+
+- (())setLineBreakMode:(NSInteger)_mode {
+    log!("TODO: [(UIButton *)setLineBreakMode:{}]", _mode);
+}
+
+- (())setReversesTitleShadowWhenHighlighted:(bool)_reverses {
+    log!("TODO: [(UIButton *)setReversesTitleShadowWhenHighlighted:{}]", _reverses);
+}
+
+- (())setTextAlignment:(NSInteger)_alignment {
+    log!("TODO: [(UIButton *)setTextAlignment:{}]", _alignment);
+}
+
 - (id)currentBackgroundImage {
     let state: UIControlState = msg![env; this state];
     msg![env; this backgroundImageForState:state]

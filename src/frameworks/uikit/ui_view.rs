@@ -200,7 +200,7 @@ pub const CLASSES: ClassExports = objc_classes! {
             release(env, block.animation_id);
         }
     } else {
-        log!("Warning: [(UIView *)commitAnimations] called without beginAnimations:");
+        log!("Warning: [(UIView *)commitAnimations] called without beginAnimations:! This is an imbalance and may cause issues.");
     }
 }
 
@@ -727,6 +727,10 @@ pub const CLASSES: ClassExports = objc_classes! {
 
 - (())setContentMode:(NSInteger)content_mode { // should be UIViewContentMode
     todo_objc_setter!(this, content_mode);
+}
+
+- (())setContentStretch:(CGRect)rect {
+    log!("TODO: [(UIView *){:?} setContentStretch:{:?}]", this, rect);
 }
 
 - (bool)clearsContextBeforeDrawing {
