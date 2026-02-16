@@ -150,6 +150,20 @@ pub const CLASSES: ClassExports = objc_classes! {
     todo_objc_setter!(this, enabled);
 }
 
+- (bool)scrollsToTop {
+    true
+}
+- (())setScrollsToTop:(bool)enabled {
+    todo_objc_setter!(this, enabled);
+}
+
+- (bool)bouncesZoom {
+    true
+}
+- (())setBouncesZoom:(bool)enabled {
+    todo_objc_setter!(this, enabled);
+}
+
 - (CGFloat)minimumZoomScale {
     1.0
 }
