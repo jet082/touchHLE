@@ -128,8 +128,8 @@ pub const CLASSES: ClassExports = objc_classes! {
 + (())beginAnimations:(id)animation_id context:(MutVoidPtr)context {
     log!("[(UIView *)beginAnimations:{:?} context:{:?}]", animation_id, context);
     () = msg_class![env; CATransaction begin];
-    let state = &mut env.framework_state.uikit.ui_view;
     retain(env, animation_id);
+    let state = &mut env.framework_state.uikit.ui_view;
     state.animation_stack.push(AnimationBlock {
         animation_id,
         context,
@@ -145,8 +145,8 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 
 + (())commitAnimations {
-    let state = &mut env.framework_state.uikit.ui_view;
-    if let Some(block) = state.animation_stack.pop() {
+    let block = env.framework_state.uikit.ui_view.animation_stack.pop();
+    if let Some(block) = block {
         log!("[(UIView *)commitAnimations] id:{:?} duration:{} delay:{}", block.animation_id, block.duration, block.delay);
         () = msg_class![env; CATransaction commit];
 
@@ -182,8 +182,7 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 
 + (())setAnimationDuration:(NSTimeInterval)duration {
-    let state = &mut env.framework_state.uikit.ui_view;
-    if let Some(block) = state.animation_stack.last_mut() {
+    if let Some(block) = env.framework_state.uikit.ui_view.animation_stack.last_mut() {
         block.duration = duration;
     }
     () = msg_class![env; CATransaction setAnimationDuration:duration];
@@ -206,50 +205,43 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 
 + (())setAnimationDelegate:(id)delegate {
-    let state = &mut env.framework_state.uikit.ui_view;
-    if let Some(block) = state.animation_stack.last_mut() {
+    if let Some(block) = env.framework_state.uikit.ui_view.animation_stack.last_mut() {
         block.delegate = delegate;
     }
 }
 
 + (())setAnimationWillStartSelector:(SEL)selector {
-    let state = &mut env.framework_state.uikit.ui_view;
-    if let Some(block) = state.animation_stack.last_mut() {
+    if let Some(block) = env.framework_state.uikit.ui_view.animation_stack.last_mut() {
         block.will_start_selector = Some(selector);
     }
 }
 
 + (())setAnimationDidStopSelector:(SEL)selector {
-    let state = &mut env.framework_state.uikit.ui_view;
-    if let Some(block) = state.animation_stack.last_mut() {
+    if let Some(block) = env.framework_state.uikit.ui_view.animation_stack.last_mut() {
         block.did_stop_selector = Some(selector);
     }
 }
 
 + (())setAnimationDelay:(NSTimeInterval)delay {
-    let state = &mut env.framework_state.uikit.ui_view;
-    if let Some(block) = state.animation_stack.last_mut() {
+    if let Some(block) = env.framework_state.uikit.ui_view.animation_stack.last_mut() {
         block.delay = delay;
     }
 }
 
 + (())setAnimationRepeatCount:(f32)repeat_count {
-    let state = &mut env.framework_state.uikit.ui_view;
-    if let Some(block) = state.animation_stack.last_mut() {
+    if let Some(block) = env.framework_state.uikit.ui_view.animation_stack.last_mut() {
         block.repeat_count = repeat_count;
     }
 }
 
 + (())setAnimationRepeatAutoreverses:(bool)repeat_autoreverses {
-    let state = &mut env.framework_state.uikit.ui_view;
-    if let Some(block) = state.animation_stack.last_mut() {
+    if let Some(block) = env.framework_state.uikit.ui_view.animation_stack.last_mut() {
         block.repeat_autoreverses = repeat_autoreverses;
     }
 }
 
 + (())setAnimationBeginsFromCurrentState:(bool)from_current_state {
-    let state = &mut env.framework_state.uikit.ui_view;
-    if let Some(block) = state.animation_stack.last_mut() {
+    if let Some(block) = env.framework_state.uikit.ui_view.animation_stack.last_mut() {
         block.begins_from_current_state = from_current_state;
     }
 }
