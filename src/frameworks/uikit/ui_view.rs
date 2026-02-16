@@ -44,6 +44,14 @@ pub struct AnimationBlock {
     pub begins_from_current_state: bool,
 }
 
+pub struct AnimationBlockHostObject {
+    pub animation_id: id,
+    pub context: MutVoidPtr,
+    pub delegate: id,
+    pub did_stop_selector: Option<SEL>,
+}
+impl HostObject for AnimationBlockHostObject {}
+
 #[derive(Default)]
 pub struct State {
     /// List of views for internal purposes. Non-retaining!
@@ -160,27 +168,38 @@ pub const CLASSES: ClassExports = objc_classes! {
 
         () = msg_class![env; CATransaction commit];
 
-        // Synchronous implementation: we don't sleep here anymore because it blocks
-        // the main thread and prevents rendering of the changed state.
-        // In the future, we should probably schedule these callbacks to happen later,
-        // allowing the run loop to continue and the window to refresh.
-
-        if block.delegate != nil {
-            if let Some(sel) = block.did_stop_selector {
-                if env.objc.object_has_method(&env.mem, block.delegate, sel) {
-                    log!("Sending animationDidStop callback to {:?}", block.delegate);
-                    let finished: id = msg_class![env; NSNumber numberWithBool:true];
-                    () = msg_send(
-                        env,
-                        (block.delegate, sel, block.animation_id, finished, block.context),
-                    );
+        let total_time = block.delay + block.duration;
+        if total_time > 0.0 {
+            // Deferred callback
+            let block_helper: id = msg_class![env; _touchHLE_UIViewAnimationBlock alloc];
+            {
+                let helper = env.objc.borrow_mut::<AnimationBlockHostObject>(block_helper);
+                helper.animation_id = block.animation_id;
+                helper.context = block.context;
+                helper.delegate = block.delegate;
+                helper.did_stop_selector = block.did_stop_selector;
+            }
+            let sel = env.objc.lookup_selector("_fireDidStop:").unwrap();
+            () = msg![env; block_helper performSelector:sel withObject:nil afterDelay:total_time];
+            release(env, block_helper);
+        } else {
+            // Immediate callback
+            if block.delegate != nil {
+                if let Some(sel) = block.did_stop_selector {
+                    if env.objc.object_has_method(&env.mem, block.delegate, sel) {
+                        log!("Sending animationDidStop callback (sync) to {:?}", block.delegate);
+                        let finished: id = msg_class![env; NSNumber numberWithBool:true];
+                        () = msg_send(
+                            env,
+                            (block.delegate, sel, block.animation_id, finished, block.context),
+                        );
+                    }
                 }
             }
+            release(env, block.animation_id);
         }
-        release(env, block.animation_id);
     } else {
         log!("Warning: [(UIView *)commitAnimations] called without beginAnimations:");
-        () = msg_class![env; CATransaction commit];
     }
 }
 
@@ -229,6 +248,10 @@ pub const CLASSES: ClassExports = objc_classes! {
     if let Some(block) = env.framework_state.uikit.ui_view.animation_stack.last_mut() {
         block.delay = delay;
     }
+}
+
++ (())setAnimationStartDate:(id)_date {
+    log!("TODO: [(UIView *)setAnimationStartDate:{:?}]", _date);
 }
 
 + (())setAnimationRepeatCount:(f32)repeat_count {
@@ -851,6 +874,41 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 - (())sizeToFit {
     log!("TODO: [(UIView *){:?} sizeToFit]", this);
+}
+
+@end
+
+@implementation _touchHLE_UIViewAnimationBlock: NSObject
+
++ (id)allocWithZone:(NSZonePtr)_zone {
+    let host_object = Box::new(AnimationBlockHostObject {
+        animation_id: nil,
+        context: MutVoidPtr::from_bits(0),
+        delegate: nil,
+        did_stop_selector: None,
+    });
+    env.objc.alloc_object(this, host_object, &mut env.mem)
+}
+
+- (())_fireDidStop:(id)_unused {
+    let block_obj = this;
+    let (delegate, animation_id, context, sel) = {
+        let block = env.objc.borrow::<AnimationBlockHostObject>(block_obj);
+        (block.delegate, block.animation_id, block.context, block.did_stop_selector)
+    };
+    if delegate != nil {
+        if let Some(sel) = sel {
+            if env.objc.object_has_method(&env.mem, delegate, sel) {
+                log!("Sending animationDidStop callback (deferred) to {:?}", delegate);
+                let finished: id = msg_class![env; NSNumber numberWithBool:true];
+                () = msg_send(
+                    env,
+                    (delegate, sel, animation_id, finished, context),
+                );
+            }
+        }
+    }
+    release(env, animation_id);
 }
 
 @end
