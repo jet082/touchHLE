@@ -148,24 +148,27 @@ pub const CLASSES: ClassExports = objc_classes! {
     let block = env.framework_state.uikit.ui_view.animation_stack.pop();
     if let Some(block) = block {
         log!("[(UIView *)commitAnimations] id:{:?} duration:{} delay:{}", block.animation_id, block.duration, block.delay);
-        () = msg_class![env; CATransaction commit];
 
         if block.delegate != nil {
             if let Some(sel) = block.will_start_selector {
                 if env.objc.object_has_method(&env.mem, block.delegate, sel) {
+                    log!("Sending animationWillStart callback to {:?}", block.delegate);
                     () = msg_send(env, (block.delegate, sel, block.animation_id, block.context));
                 }
             }
         }
 
-        let total_time = block.delay + block.duration;
-        if total_time > 0.0 {
-            env.sleep(std::time::Duration::from_secs_f64(total_time), false);
-        }
+        () = msg_class![env; CATransaction commit];
+
+        // Synchronous implementation: we don't sleep here anymore because it blocks
+        // the main thread and prevents rendering of the changed state.
+        // In the future, we should probably schedule these callbacks to happen later,
+        // allowing the run loop to continue and the window to refresh.
 
         if block.delegate != nil {
             if let Some(sel) = block.did_stop_selector {
                 if env.objc.object_has_method(&env.mem, block.delegate, sel) {
+                    log!("Sending animationDidStop callback to {:?}", block.delegate);
                     let finished: id = msg_class![env; NSNumber numberWithBool:true];
                     () = msg_send(
                         env,
