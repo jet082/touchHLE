@@ -158,7 +158,14 @@ pub const CLASSES: ClassExports = objc_classes! {
     false // default value
 }
 - (())setAdjustsFontSizeToFitWidth:(bool)adjusts {
-    assert!(!adjusts); // TODO
+    todo_objc_setter!(this, adjusts);
+}
+
+- (CGFloat)minimumFontSize {
+    0.0
+}
+- (())setMinimumFontSize:(CGFloat)size {
+    todo_objc_setter!(this, size);
 }
 
 - (id)textColor {
@@ -231,6 +238,27 @@ pub const CLASSES: ClassExports = objc_classes! {
         log!("TODO: UILabel numberOfLines > 1 (label {:?})", this);
     }
     () = msg![env; this setNeedsDisplay];
+}
+
+- (NSInteger)baselineAdjustment {
+    0 // UIBaselineAdjustmentAlignBaselines
+}
+- (())setBaselineAdjustment:(NSInteger)adjustment {
+    todo_objc_setter!(this, adjustment);
+}
+
+- (bool)isEnabled {
+    true
+}
+- (())setEnabled:(bool)enabled {
+    todo_objc_setter!(this, enabled);
+}
+
+- (bool)isHighlighted {
+    false
+}
+- (())setHighlighted:(bool)highlighted {
+    todo_objc_setter!(this, highlighted);
 }
 
 - (())drawRect:(CGRect)_rect {
