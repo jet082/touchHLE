@@ -176,7 +176,7 @@ pub const CLASSES: ClassExports = objc_classes! {
                 let helper = env.objc.borrow_mut::<AnimationBlockHostObject>(block_helper);
                 helper.animation_id = block.animation_id;
                 helper.context = block.context;
-                helper.delegate = block.delegate;
+                helper.delegate = retain(env, block.delegate); // Retain delegate
                 helper.did_stop_selector = block.did_stop_selector;
             }
             let sel = env.objc.lookup_selector("_fireDidStop:").unwrap();
@@ -272,8 +272,11 @@ pub const CLASSES: ClassExports = objc_classes! {
     }
 }
 
-+ (())setAnimationTransition:(NSInteger)_transition forView:(id)_view cache:(bool)_cache {
-    log!("TODO: [(UIView *)setAnimationTransition:{} forView:{:?} cache:{}]", _transition, _view, _cache);
++ (())setAnimationTransition:(NSInteger)transition forView:(id)view cache:(bool)_cache {
+    log!("[(UIView *)setAnimationTransition:{} forView:{:?} cache:{}]", transition, view, _cache);
+    // This is often used for page flips, etc.
+    // We can't easily implement it correctly without more complex Core Animation support,
+    // but we can at least log it properly.
 }
 
 + (bool)areAnimationsEnabled {
@@ -898,7 +901,8 @@ pub const CLASSES: ClassExports = objc_classes! {
     };
     if delegate != nil {
         if let Some(sel) = sel {
-            if env.objc.object_has_method(&env.mem, delegate, sel) {
+            // Ensure delegate is still valid before calling it
+            if env.objc.get_host_object(delegate).is_some() && env.objc.object_has_method(&env.mem, delegate, sel) {
                 log!("Sending animationDidStop callback (deferred) to {:?}", delegate);
                 let finished: id = msg_class![env; NSNumber numberWithBool:true];
                 () = msg_send(
@@ -907,6 +911,7 @@ pub const CLASSES: ClassExports = objc_classes! {
                 );
             }
         }
+        release(env, delegate); // Release retained delegate
     }
     release(env, animation_id);
 }

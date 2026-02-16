@@ -323,6 +323,14 @@ pub const CLASSES: ClassExports = objc_classes! {
     update(env, this);
 }
 
+- (())setTitleShadowColor:(id)_color forState:(UIControlState)_state {
+    log!("TODO: [(UIButton *)setTitleShadowColor:{:?} forState:{}]", _color, _state);
+}
+
+- (id)titleShadowColorForState:(UIControlState)_state {
+    nil
+}
+
 - (id)currentBackgroundImage {
     let state: UIControlState = msg![env; this state];
     msg![env; this backgroundImageForState:state]
