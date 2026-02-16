@@ -129,6 +129,7 @@ pub const CLASSES: ClassExports = objc_classes! {
     log!("[(UIView *)beginAnimations:{:?} context:{:?}]", animation_id, context);
     () = msg_class![env; CATransaction begin];
     let state = &mut env.framework_state.uikit.ui_view;
+    retain(env, animation_id);
     state.animation_stack.push(AnimationBlock {
         animation_id,
         context,
@@ -149,17 +150,20 @@ pub const CLASSES: ClassExports = objc_classes! {
         log!("[(UIView *)commitAnimations] id:{:?} duration:{} delay:{}", block.animation_id, block.duration, block.delay);
         () = msg_class![env; CATransaction commit];
 
-        let total_time = block.delay + block.duration;
-        if total_time > 0.0 {
-            env.sleep(std::time::Duration::from_secs_f64(total_time), false);
-        }
-
         if block.delegate != nil {
             if let Some(sel) = block.will_start_selector {
                 if env.objc.object_has_method(&env.mem, block.delegate, sel) {
                     () = msg_send(env, (block.delegate, sel, block.animation_id, block.context));
                 }
             }
+        }
+
+        let total_time = block.delay + block.duration;
+        if total_time > 0.0 {
+            env.sleep(std::time::Duration::from_secs_f64(total_time), false);
+        }
+
+        if block.delegate != nil {
             if let Some(sel) = block.did_stop_selector {
                 if env.objc.object_has_method(&env.mem, block.delegate, sel) {
                     let finished: id = msg_class![env; NSNumber numberWithBool:true];
@@ -170,6 +174,7 @@ pub const CLASSES: ClassExports = objc_classes! {
                 }
             }
         }
+        release(env, block.animation_id);
     } else {
         log!("Warning: [(UIView *)commitAnimations] called without beginAnimations:");
         () = msg_class![env; CATransaction commit];
@@ -251,6 +256,14 @@ pub const CLASSES: ClassExports = objc_classes! {
 
 + (())setAnimationTransition:(NSInteger)_transition forView:(id)_view cache:(bool)_cache {
     log!("TODO: [(UIView *)setAnimationTransition:{} forView:{:?} cache:{}]", _transition, _view, _cache);
+}
+
++ (bool)areAnimationsEnabled {
+    true
+}
+
++ (())setAnimationsEnabled:(bool)_enabled {
+    log!("TODO: [(UIView *)setAnimationsEnabled:{}]", _enabled);
 }
 
 // TODO: accessors etc
