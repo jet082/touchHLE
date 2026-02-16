@@ -26,16 +26,25 @@ use crate::frameworks::foundation::ns_string::get_static_str;
 use crate::frameworks::foundation::{ns_array, NSInteger, NSTimeInterval, NSUInteger};
 use crate::mem::MutVoidPtr;
 use crate::objc::{
-    autorelease, id, msg, msg_class, nil, objc_classes, release, retain, todo_objc_setter, Class,
-    ClassExports, HostObject, NSZonePtr, ObjC, SEL,
+    autorelease, id, msg, msg_class, msg_send, nil, objc_classes, release, retain, todo_objc_setter,
+    Class, ClassExports, HostObject, NSZonePtr, ObjC, SEL,
 };
 use crate::Environment;
+
+pub struct AnimationBlock {
+    pub animation_id: id,
+    pub context: MutVoidPtr,
+    pub delegate: id,
+    pub will_start_selector: Option<SEL>,
+    pub did_stop_selector: Option<SEL>,
+}
 
 #[derive(Default)]
 pub struct State {
     /// List of views for internal purposes. Non-retaining!
     pub(super) views: Vec<id>,
     pub ui_window: ui_window::State,
+    pub(super) animation_stack: Vec<AnimationBlock>,
 }
 
 pub(super) struct UIViewHostObject {
@@ -111,12 +120,39 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.get_known_class("CALayer", &mut env.mem)
 }
 
-+ (())beginAnimations:(id)_animation_id context:(MutVoidPtr)_context {
++ (())beginAnimations:(id)animation_id context:(MutVoidPtr)context {
     () = msg_class![env; CATransaction begin];
+    let state = &mut env.framework_state.uikit.ui_view;
+    state.animation_stack.push(AnimationBlock {
+        animation_id,
+        context,
+        delegate: nil,
+        will_start_selector: None,
+        did_stop_selector: None,
+    });
 }
 
 + (())commitAnimations {
     () = msg_class![env; CATransaction commit];
+    let state = &mut env.framework_state.uikit.ui_view;
+    if let Some(block) = state.animation_stack.pop() {
+        if block.delegate != nil {
+            if let Some(sel) = block.will_start_selector {
+                if env.objc.object_has_method(&env.mem, block.delegate, sel) {
+                    () = msg_send(env, (block.delegate, sel, block.animation_id, block.context));
+                }
+            }
+            if let Some(sel) = block.did_stop_selector {
+                if env.objc.object_has_method(&env.mem, block.delegate, sel) {
+                    let finished: id = msg_class![env; NSNumber numberWithBool:true];
+                    () = msg_send(
+                        env,
+                        (block.delegate, sel, block.animation_id, finished, block.context),
+                    );
+                }
+            }
+        }
+    }
 }
 
 + (())setAnimationDuration:(NSTimeInterval)duration {
@@ -139,16 +175,25 @@ pub const CLASSES: ClassExports = objc_classes! {
     () = msg_class![env; CATransaction setAnimationTimingFunction:function];
 }
 
-+ (())setAnimationDelegate:(id)_delegate {
-    log!("TODO: [(UIView *)setAnimationDelegate:{:?}]", _delegate);
++ (())setAnimationDelegate:(id)delegate {
+    let state = &mut env.framework_state.uikit.ui_view;
+    if let Some(block) = state.animation_stack.last_mut() {
+        block.delegate = delegate;
+    }
 }
 
-+ (())setAnimationWillStartSelector:(SEL)_selector {
-    log!("TODO: [(UIView *)setAnimationWillStartSelector:{:?}]", _selector);
++ (())setAnimationWillStartSelector:(SEL)selector {
+    let state = &mut env.framework_state.uikit.ui_view;
+    if let Some(block) = state.animation_stack.last_mut() {
+        block.will_start_selector = Some(selector);
+    }
 }
 
-+ (())setAnimationDidStopSelector:(SEL)_selector {
-    log!("TODO: [(UIView *)setAnimationDidStopSelector:{:?}]", _selector);
++ (())setAnimationDidStopSelector:(SEL)selector {
+    let state = &mut env.framework_state.uikit.ui_view;
+    if let Some(block) = state.animation_stack.last_mut() {
+        block.did_stop_selector = Some(selector);
+    }
 }
 
 + (())setAnimationDelay:(NSTimeInterval)_delay {
