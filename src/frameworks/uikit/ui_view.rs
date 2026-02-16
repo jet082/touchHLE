@@ -23,7 +23,8 @@ use crate::frameworks::core_graphics::cg_color::CGColorRef;
 use crate::frameworks::core_graphics::cg_context::{CGContextClearRect, CGContextRef};
 use crate::frameworks::core_graphics::{CGFloat, CGPoint, CGRect, CGSize};
 use crate::frameworks::foundation::ns_string::get_static_str;
-use crate::frameworks::foundation::{ns_array, NSInteger, NSUInteger};
+use crate::frameworks::foundation::{ns_array, NSInteger, NSTimeInterval, NSUInteger};
+use crate::mem::MutVoidPtr;
 use crate::objc::{
     autorelease, id, msg, msg_class, nil, objc_classes, release, retain, todo_objc_setter, Class,
     ClassExports, HostObject, NSZonePtr, ObjC,
@@ -108,6 +109,18 @@ pub const CLASSES: ClassExports = objc_classes! {
 
 + (Class)layerClass {
     env.objc.get_known_class("CALayer", &mut env.mem)
+}
+
++ (())beginAnimations:(id)_animation_id context:(MutVoidPtr)_context {
+    msg_class![env; CATransaction begin];
+}
+
++ (())commitAnimations {
+    msg_class![env; CATransaction commit];
+}
+
++ (())setAnimationDuration:(NSTimeInterval)duration {
+    msg_class![env; CATransaction setAnimationDuration:duration];
 }
 
 // TODO: accessors etc
