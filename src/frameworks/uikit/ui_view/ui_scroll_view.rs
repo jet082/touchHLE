@@ -57,11 +57,18 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow_mut::<UIScrollViewHostObject>(this).delegate = delegate;
 }
 
-- (())setDelaysContentTouches:(id)_delay_content_touches{
-    // TODO
+- (bool)delaysContentTouches {
+    true
 }
-- (())setBounces:(id)_bounces {
-    // TODO
+- (())setDelaysContentTouches:(bool)delays {
+    todo_objc_setter!(this, delays);
+}
+
+- (bool)bounces {
+    true
+}
+- (())setBounces:(bool)bounces {
+    todo_objc_setter!(this, bounces);
 }
 
 - (bool)scrollEnabled {
@@ -92,6 +99,84 @@ pub const CLASSES: ClassExports = objc_classes! {
 
 - (())setIndicatorStyle:(UIScrollViewIndicatorStyle)style {
     todo_objc_setter!(this, style);
+}
+
+- (bool)isDirectionalLockEnabled {
+    false
+}
+- (())setDirectionalLockEnabled:(bool)enabled {
+    todo_objc_setter!(this, enabled);
+}
+
+- (bool)showsHorizontalScrollIndicator {
+    true
+}
+- (())setShowsHorizontalScrollIndicator:(bool)shows {
+    todo_objc_setter!(this, shows);
+}
+
+- (bool)showsVerticalScrollIndicator {
+    true
+}
+- (())setShowsVerticalScrollIndicator:(bool)shows {
+    todo_objc_setter!(this, shows);
+}
+
+- (bool)isPagingEnabled {
+    false
+}
+- (())setPagingEnabled:(bool)enabled {
+    todo_objc_setter!(this, enabled);
+}
+
+- (bool)alwaysBounceVertical {
+    false
+}
+- (())setAlwaysBounceVertical:(bool)enabled {
+    todo_objc_setter!(this, enabled);
+}
+
+- (bool)alwaysBounceHorizontal {
+    false
+}
+- (())setAlwaysBounceHorizontal:(bool)enabled {
+    todo_objc_setter!(this, enabled);
+}
+
+- (bool)canCancelContentTouches {
+    true
+}
+- (())setCanCancelContentTouches:(bool)enabled {
+    todo_objc_setter!(this, enabled);
+}
+
+- (CGFloat)minimumZoomScale {
+    1.0
+}
+- (())setMinimumZoomScale:(CGFloat)scale {
+    todo_objc_setter!(this, scale);
+}
+
+- (CGFloat)maximumZoomScale {
+    1.0
+}
+- (())setMaximumZoomScale:(CGFloat)scale {
+    todo_objc_setter!(this, scale);
+}
+
+- (CGFloat)zoomScale {
+    1.0
+}
+- (())setZoomScale:(CGFloat)scale {
+    todo_objc_setter!(this, scale);
+}
+
+- (())flashScrollIndicators {
+    log!("TODO: [(UIScrollView*){:?} flashScrollIndicators]", this);
+}
+
+- (())scrollRectToVisible:(CGRect)rect animated:(bool)animated {
+    log!("TODO: [(UIScrollView*){:?} scrollRectToVisible:{:?} animated:{}]", this, rect, animated);
 }
 
 - (())touchesMoved:(id)touches // NSSet* of UITouch*
