@@ -37,6 +37,8 @@ pub struct AnimationBlock {
     pub delegate: id,
     pub will_start_selector: Option<SEL>,
     pub did_stop_selector: Option<SEL>,
+    pub duration: NSTimeInterval,
+    pub delay: NSTimeInterval,
 }
 
 #[derive(Default)]
@@ -121,6 +123,7 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 
 + (())beginAnimations:(id)animation_id context:(MutVoidPtr)context {
+    log_dbg!("[(UIView *)beginAnimations:{:?} context:{:?}]", animation_id, context);
     () = msg_class![env; CATransaction begin];
     let state = &mut env.framework_state.uikit.ui_view;
     state.animation_stack.push(AnimationBlock {
@@ -129,13 +132,17 @@ pub const CLASSES: ClassExports = objc_classes! {
         delegate: nil,
         will_start_selector: None,
         did_stop_selector: None,
+        duration: 0.2, // standard default
+        delay: 0.0,
     });
 }
 
 + (())commitAnimations {
-    () = msg_class![env; CATransaction commit];
     let state = &mut env.framework_state.uikit.ui_view;
     if let Some(block) = state.animation_stack.pop() {
+        log_dbg!("[(UIView *)commitAnimations] id:{:?} duration:{} delay:{}", block.animation_id, block.duration, block.delay);
+        () = msg_class![env; CATransaction commit];
+
         if block.delegate != nil {
             if let Some(sel) = block.will_start_selector {
                 if env.objc.object_has_method(&env.mem, block.delegate, sel) {
@@ -152,10 +159,17 @@ pub const CLASSES: ClassExports = objc_classes! {
                 }
             }
         }
+    } else {
+        log!("Warning: [(UIView *)commitAnimations] called without beginAnimations:");
+        () = msg_class![env; CATransaction commit];
     }
 }
 
 + (())setAnimationDuration:(NSTimeInterval)duration {
+    let state = &mut env.framework_state.uikit.ui_view;
+    if let Some(block) = state.animation_stack.last_mut() {
+        block.duration = duration;
+    }
     () = msg_class![env; CATransaction setAnimationDuration:duration];
 }
 
@@ -196,8 +210,11 @@ pub const CLASSES: ClassExports = objc_classes! {
     }
 }
 
-+ (())setAnimationDelay:(NSTimeInterval)_delay {
-    log!("TODO: [(UIView *)setAnimationDelay:{}]", _delay);
++ (())setAnimationDelay:(NSTimeInterval)delay {
+    let state = &mut env.framework_state.uikit.ui_view;
+    if let Some(block) = state.animation_stack.last_mut() {
+        block.delay = delay;
+    }
 }
 
 + (())setAnimationRepeatCount:(f32)_repeat_count {
