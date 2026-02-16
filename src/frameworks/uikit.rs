@@ -51,6 +51,7 @@ pub const DYLIB: crate::dyld::HostDylib = crate::dyld::HostDylib {
         ui_view::ui_alert_view::CLASSES,
         ui_view::ui_control::CLASSES,
         ui_view::ui_control::ui_button::CLASSES,
+        ui_view::ui_control::ui_page_control::CLASSES,
         ui_view::ui_control::ui_segmented_control::CLASSES,
         ui_view::ui_control::ui_slider::CLASSES,
         ui_view::ui_control::ui_text_field::CLASSES,

@@ -6,7 +6,8 @@
 //! `UISegmentedControl`.
 
 use crate::frameworks::core_graphics::CGRect;
-use crate::objc::{id, msg_super, objc_classes, ClassExports};
+use crate::frameworks::foundation::NSInteger;
+use crate::objc::{id, msg_super, objc_classes, todo_objc_setter, ClassExports};
 
 pub const CLASSES: ClassExports = objc_classes! {
 
@@ -25,7 +26,23 @@ pub const CLASSES: ClassExports = objc_classes! {
     msg_super![env; this initWithCoder:coder]
 }
 
-// TODO: all of it
+- (NSInteger)numberOfSegments {
+    0
+}
+
+- (NSInteger)selectedSegmentIndex {
+    -1
+}
+- (())setSelectedSegmentIndex:(NSInteger)index {
+    todo_objc_setter!(this, index);
+}
+
+- (NSInteger)segmentedControlStyle {
+    0 // UISegmentedControlStylePlain
+}
+- (())setSegmentedControlStyle:(NSInteger)style {
+    todo_objc_setter!(this, style);
+}
 
 @end
 

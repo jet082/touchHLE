@@ -888,7 +888,12 @@ pub const CLASSES: ClassExports = objc_classes! {
     size
 }
 - (())sizeToFit {
-    log!("TODO: [(UIView *){:?} sizeToFit]", this);
+    let bounds: CGRect = msg![env; this bounds];
+    let size: CGSize = msg![env; this sizeThatFits:(bounds.size)];
+    () = msg![env; this setBounds:(CGRect {
+        origin: bounds.origin,
+        size
+    })];
 }
 
 @end

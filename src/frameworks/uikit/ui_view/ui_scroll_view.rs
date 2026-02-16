@@ -8,6 +8,7 @@
 pub mod ui_text_view;
 use crate::frameworks::core_graphics::{CGFloat, CGPoint, CGRect, CGSize};
 use crate::frameworks::foundation::NSInteger;
+use crate::frameworks::uikit::ui_geometry::UIEdgeInsets;
 use crate::objc::{
     id, impl_HostObject_with_superclass, msg, nil, objc_classes, todo_objc_setter, ClassExports,
     NSZonePtr, SEL,
@@ -22,6 +23,8 @@ pub struct UIScrollViewHostObject {
     scroll_enabled: bool,
     content_offset: CGPoint,
     content_size: CGSize,
+    content_inset: UIEdgeInsets,
+    scroll_indicator_insets: UIEdgeInsets,
 }
 impl_HostObject_with_superclass!(UIScrollViewHostObject);
 impl Default for UIScrollViewHostObject {
@@ -35,6 +38,8 @@ impl Default for UIScrollViewHostObject {
                 width: 0.0,
                 height: 0.0,
             },
+            content_inset: UIEdgeInsets::default(),
+            scroll_indicator_insets: UIEdgeInsets::default(),
         }
     }
 }
@@ -95,6 +100,20 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 - (())setContentSize:(CGSize)size {
     env.objc.borrow_mut::<UIScrollViewHostObject>(this).content_size = size;
+}
+
+- (UIEdgeInsets)contentInset {
+    env.objc.borrow::<UIScrollViewHostObject>(this).content_inset
+}
+- (())setContentInset:(UIEdgeInsets)inset {
+    env.objc.borrow_mut::<UIScrollViewHostObject>(this).content_inset = inset;
+}
+
+- (UIEdgeInsets)scrollIndicatorInsets {
+    env.objc.borrow::<UIScrollViewHostObject>(this).scroll_indicator_insets
+}
+- (())setScrollIndicatorInsets:(UIEdgeInsets)inset {
+    env.objc.borrow_mut::<UIScrollViewHostObject>(this).scroll_indicator_insets = inset;
 }
 
 - (())setIndicatorStyle:(UIScrollViewIndicatorStyle)style {

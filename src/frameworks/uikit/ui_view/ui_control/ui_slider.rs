@@ -32,7 +32,33 @@ pub const CLASSES: ClassExports = objc_classes! {
     todo_objc_setter!(this, img);
 }
 
-// TODO: all of it
+- (float)value {
+    0.5
+}
+- (())setValue:(float)val {
+    todo_objc_setter!(this, val);
+}
+
+- (float)minimumValue {
+    0.0
+}
+- (())setMinimumValue:(float)val {
+    todo_objc_setter!(this, val);
+}
+
+- (float)maximumValue {
+    1.0
+}
+- (())setMaximumValue:(float)val {
+    todo_objc_setter!(this, val);
+}
+
+- (bool)isContinuous {
+    true
+}
+- (())setContinuous:(bool)val {
+    todo_objc_setter!(this, val);
+}
 
 @end
 
