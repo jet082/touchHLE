@@ -8,7 +8,7 @@
 use crate::frameworks::core_graphics::cg_image::CGImageRef;
 use crate::frameworks::core_graphics::{CGPoint, CGRect, CGSize};
 use crate::frameworks::foundation::ns_string::get_static_str;
-use crate::frameworks::foundation::NSTimeInterval;
+use crate::frameworks::foundation::{NSUInteger, NSTimeInterval};
 use crate::objc::{
     id, impl_HostObject_with_superclass, msg, msg_super, nil, objc_classes, release, retain,
     todo_objc_setter, ClassExports, NSZonePtr,
@@ -94,9 +94,12 @@ pub const CLASSES: ClassExports = objc_classes! {
 - (())setAnimationImages:(id)images { // NSArray<UIImage *>*
     todo_objc_setter!(this, images);
     // TODO: Use all images in the array instead of just the first one
-    if images != nil && msg![env; images count] > 0u32 {
-        let first_image: id = msg![env; images objectAtIndex:0u32];
-        () = msg![env; this setImage:first_image];
+    if images != nil {
+        let count: NSUInteger = msg![env; images count];
+        if count > 0 {
+            let first_image: id = msg![env; images objectAtIndex:0u32];
+            () = msg![env; this setImage:first_image];
+        }
     }
 }
 
