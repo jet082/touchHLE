@@ -27,7 +27,7 @@ use crate::frameworks::foundation::{ns_array, NSInteger, NSTimeInterval, NSUInte
 use crate::mem::MutVoidPtr;
 use crate::objc::{
     autorelease, id, msg, msg_class, nil, objc_classes, release, retain, todo_objc_setter, Class,
-    ClassExports, HostObject, NSZonePtr, ObjC,
+    ClassExports, HostObject, NSZonePtr, ObjC, SEL,
 };
 use crate::Environment;
 
@@ -121,6 +121,54 @@ pub const CLASSES: ClassExports = objc_classes! {
 
 + (())setAnimationDuration:(NSTimeInterval)duration {
     () = msg_class![env; CATransaction setAnimationDuration:duration];
+}
+
++ (())setAnimationCurve:(NSInteger)curve {
+    let name = match curve {
+        0 => "easeInEaseOut",
+        1 => "easeIn",
+        2 => "easeOut",
+        3 => "linear",
+        _ => {
+            log!("Warning: unknown UIViewAnimationCurve {}, defaulting to easeInEaseOut", curve);
+            "easeInEaseOut"
+        }
+    };
+    let name_str = get_static_str(env, name);
+    let function: id = msg_class![env; CAMediaTimingFunction functionWithName:name_str];
+    () = msg_class![env; CATransaction setAnimationTimingFunction:function];
+}
+
++ (())setAnimationDelegate:(id)_delegate {
+    log!("TODO: [(UIView *)setAnimationDelegate:{:?}]", _delegate);
+}
+
++ (())setAnimationWillStartSelector:(SEL)_selector {
+    log!("TODO: [(UIView *)setAnimationWillStartSelector:{:?}]", _selector);
+}
+
++ (())setAnimationDidStopSelector:(SEL)_selector {
+    log!("TODO: [(UIView *)setAnimationDidStopSelector:{:?}]", _selector);
+}
+
++ (())setAnimationDelay:(NSTimeInterval)_delay {
+    log!("TODO: [(UIView *)setAnimationDelay:{}]", _delay);
+}
+
++ (())setAnimationRepeatCount:(f32)_repeat_count {
+    log!("TODO: [(UIView *)setAnimationRepeatCount:{}]", _repeat_count);
+}
+
++ (())setAnimationRepeatAutoreverses:(bool)_repeat_autoreverses {
+    log!("TODO: [(UIView *)setAnimationRepeatAutoreverses:{}]", _repeat_autoreverses);
+}
+
++ (())setAnimationBeginsFromCurrentState:(bool)_from_current_state {
+    log!("TODO: [(UIView *)setAnimationBeginsFromCurrentState:{}]", _from_current_state);
+}
+
++ (())setAnimationTransition:(NSInteger)_transition forView:(id)_view cache:(bool)_cache {
+    log!("TODO: [(UIView *)setAnimationTransition:{} forView:{:?} cache:{}]", _transition, _view, _cache);
 }
 
 // TODO: accessors etc
