@@ -75,11 +75,11 @@ impl GuestArg for UIEdgeInsets {
 
 impl std::fmt::Display for UIEdgeInsets {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{{{}, {}, {}, {}}}",
-            self.top, self.left, self.bottom, self.right
-        )
+        let top = self.top;
+        let left = self.left;
+        let bottom = self.bottom;
+        let right = self.right;
+        write!(f, "{{{top}, {left}, {bottom}, {right}}}")
     }
 }
 

@@ -240,6 +240,26 @@ pub const CLASSES: ClassExports = objc_classes! {
     () = msg![env; this setNeedsDisplay];
 }
 
+- (CGSize)sizeThatFits:(CGSize)size {
+    let host_obj = env.objc.borrow::<UILabelHostObject>(this);
+    let text = host_obj.text;
+    let font = host_obj.font;
+    let line_break_mode = host_obj.line_break_mode;
+    let number_of_lines = host_obj.number_of_lines;
+
+    if text == nil {
+        return CGSize { width: 0.0, height: 0.0 };
+    }
+
+    if number_of_lines == 1 {
+        msg![env; text sizeWithFont:font]
+    } else {
+        msg![env; text sizeWithFont:font
+                  constrainedToSize:size
+                      lineBreakMode:line_break_mode]
+    }
+}
+
 - (NSInteger)baselineAdjustment {
     0 // UIBaselineAdjustmentAlignBaselines
 }

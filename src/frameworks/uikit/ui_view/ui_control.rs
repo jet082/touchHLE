@@ -182,6 +182,9 @@ pub const CLASSES: ClassExports = objc_classes! {
     // tracking property? why here?)
     env.objc.borrow_mut::<UIControlHostObject>(this).tracking = false;
 }
+- (())cancelTrackingWithEvent:(id)_event { // UIEvent*
+    env.objc.borrow_mut::<UIControlHostObject>(this).tracking = false;
+}
 
 - (())touchesBegan:(id)touches // NSSet* of UITouch*
          withEvent:(id)event { // UIEvent*
@@ -261,6 +264,21 @@ pub const CLASSES: ClassExports = objc_classes! {
         true => UIControlEventTouchUpInside,
         false => UIControlEventTouchUpOutside,
     });
+}
+- (())touchesCancelled:(id)_touches // NSSet* of UITouch*
+               withEvent:(id)event { // UIEvent*
+    let tracked_touch = env.objc.borrow::<UIControlHostObject>(this).tracked_touch;
+    if tracked_touch == nil {
+        return;
+    }
+    () = msg![env; this cancelTrackingWithEvent:event];
+    release(env, tracked_touch);
+    env.objc.borrow_mut::<UIControlHostObject>(this).tracked_touch = nil;
+    () = msg![env; this setHighlighted:false];
+}
+
+- (())sendActionsForControlEvents:(UIControlEvents)controlEvents {
+    send_actions(env, this, nil, controlEvents);
 }
 
 - (())addTarget:(id)target
