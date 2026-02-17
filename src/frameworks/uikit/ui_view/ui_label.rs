@@ -384,13 +384,13 @@ pub const CLASSES: ClassExports = objc_classes! {
                 x: shadow_rect.origin.x + x_offset_mult * (bounds.size.width - calculated_size.width),
                 y: shadow_rect.origin.y
             };
-            msg![env; text drawAtPoint:point
-                              withFont:font];
+            let _: CGSize = msg![env; text drawAtPoint:point
+                                              withFont:font];
         } else {
-            msg![env; text drawInRect:shadow_rect
-                             withFont:font
-                        lineBreakMode:line_break_mode
-                            alignment:text_alignment];
+            let _: CGSize = msg![env; text drawInRect:shadow_rect
+                                             withFont:font
+                                        lineBreakMode:line_break_mode
+                                            alignment:text_alignment];
         }
     }
 

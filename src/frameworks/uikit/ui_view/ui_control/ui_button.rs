@@ -232,7 +232,9 @@ pub const CLASSES: ClassExports = objc_classes! {
         titles_for_states,
         title_colors_for_states,
         images_for_states,
-        background_images_for_states
+        background_images_for_states,
+        adjusts_image_when_highlighted: _,
+        adjusts_image_when_disabled: _,
     } = std::mem::take(env.objc.borrow_mut(this));
 
     release(env, title_label);
