@@ -33,6 +33,30 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.alloc_object(this, host_object, &mut env.mem)
 }
 
+- (id)initWithCoder:(id)coder {
+    let this: id = msg_super![env; this initWithCoder:coder];
+
+    let key_ns_string = crate::frameworks::foundation::ns_string::get_static_str(env, "UIPageControlNumberOfPages");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let pages: NSInteger = msg![env; coder decodeIntegerForKey:key_ns_string];
+        () = msg![env; this setNumberOfPages:pages];
+    }
+
+    let key_ns_string = crate::frameworks::foundation::ns_string::get_static_str(env, "UIPageControlCurrentPage");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let page: NSInteger = msg![env; coder decodeIntegerForKey:key_ns_string];
+        () = msg![env; this setCurrentPage:page];
+    }
+
+    let key_ns_string = crate::frameworks::foundation::ns_string::get_static_str(env, "UIPageControlHidesForSinglePage");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let hides: bool = msg![env; coder decodeBoolForKey:key_ns_string];
+        () = msg![env; this setHidesForSinglePage:hides];
+    }
+
+    this
+}
+
 - (NSInteger)numberOfPages {
     env.objc.borrow::<UIPageControlHostObject>(this).number_of_pages
 }

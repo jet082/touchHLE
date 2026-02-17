@@ -194,6 +194,19 @@ impl State {
                     );
                     presentation.bounds = from_value + by_value * interpolation_amount;
                 }
+                "center" | "position" => {
+                    let from_value =
+                        id_as_option(from_value).map(|obj| msg![env; obj CGPointValue]);
+                    let to_value = id_as_option(to_value).map(|obj| msg![env; obj CGPointValue]);
+                    let by_value = id_as_option(by_value).map(|obj| msg![env; obj CGPointValue]);
+                    let (from_value, by_value) = get_from_and_by_values(
+                        Some(presentation.position),
+                        from_value,
+                        to_value,
+                        by_value,
+                    );
+                    presentation.position = from_value + by_value * interpolation_amount;
+                }
                 "cornerRadius" => {
                     let from_value = id_as_option(from_value).map(|obj| msg![env; obj floatValue]);
                     let to_value = id_as_option(to_value).map(|obj| msg![env; obj floatValue]);
@@ -224,7 +237,7 @@ impl State {
                     );
                     presentation.hidden = (from_value + by_value * interpolation_amount) > 0.5;
                 }
-                "opacity" => {
+                "alpha" | "opacity" => {
                     let from_value = id_as_option(from_value).map(|obj| msg![env; obj floatValue]);
                     let to_value = id_as_option(to_value).map(|obj| msg![env; obj floatValue]);
                     let by_value = id_as_option(by_value).map(|obj| msg![env; obj floatValue]);
@@ -235,19 +248,6 @@ impl State {
                         by_value,
                     );
                     presentation.opacity = from_value + by_value * interpolation_amount;
-                }
-                "position" => {
-                    let from_value =
-                        id_as_option(from_value).map(|obj| msg![env; obj CGPointValue]);
-                    let to_value = id_as_option(to_value).map(|obj| msg![env; obj CGPointValue]);
-                    let by_value = id_as_option(by_value).map(|obj| msg![env; obj CGPointValue]);
-                    let (from_value, by_value) = get_from_and_by_values(
-                        Some(presentation.position),
-                        from_value,
-                        to_value,
-                        by_value,
-                    );
-                    presentation.position = from_value + by_value * interpolation_amount;
                 }
                 "transform" => {
                     let from_value =

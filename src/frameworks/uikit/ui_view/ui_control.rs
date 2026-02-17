@@ -119,6 +119,24 @@ pub const CLASSES: ClassExports = objc_classes! {
     msg_super![env; this dealloc]
 }
 
+- (id)initWithCoder:(id)coder {
+    let this: id = msg_super![env; this initWithCoder: coder];
+
+    let key_ns_string = get_static_str(env, "UIEnabled");
+    if msg![env; coder containsValueForKey: key_ns_string] {
+        let enabled: bool = msg![env; coder decodeBoolForKey: key_ns_string];
+        () = msg![env; this setEnabled: enabled];
+    }
+
+    let key_ns_string = get_static_str(env, "UISelected");
+    if msg![env; coder containsValueForKey: key_ns_string] {
+        let selected: bool = msg![env; coder decodeBoolForKey: key_ns_string];
+        () = msg![env; this setSelected: selected];
+    }
+
+    this
+}
+
 - (UIControlState)state {
     let &UIControlHostObject {
         highlighted,

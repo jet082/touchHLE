@@ -32,11 +32,13 @@ unsafe impl SafeRead for CGAffineTransform {}
 
 impl std::fmt::Display for CGAffineTransform {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "[{}, {}, {}, {}, {}, {}]",
-            self.a, self.b, self.c, self.d, self.tx, self.ty
-        )
+        let a = self.a;
+        let b = self.b;
+        let c = self.c;
+        let d = self.d;
+        let tx = self.tx;
+        let ty = self.ty;
+        write!(f, "[{}, {}, {}, {}, {}, {}]", a, b, c, d, tx, ty)
     }
 }
 

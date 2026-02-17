@@ -326,6 +326,12 @@ pub const CLASSES: ClassExports = objc_classes! {
     let key_ns_string = get_static_str(env, "UICenter");
     let center: CGPoint = msg![env; coder decodeCGPointForKey:key_ns_string];
 
+    let key_ns_string = get_static_str(env, "UIFrame");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let frame: CGRect = msg![env; coder decodeCGRectForKey:key_ns_string];
+        () = msg![env; this setFrame:frame];
+    }
+
     let key_ns_string = get_static_str(env, "UIHidden");
     let hidden: bool = msg![env; coder decodeBoolForKey:key_ns_string];
 

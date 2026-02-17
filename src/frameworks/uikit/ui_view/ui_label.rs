@@ -84,6 +84,42 @@ pub const CLASSES: ClassExports = objc_classes! {
     let text_color: id = msg![env; coder decodeObjectForKey:key_ns_string];
     () = msg![env; this setTextColor:text_color];
 
+    let key_ns_string = get_static_str(env, "UIFont");
+    let font: id = msg![env; coder decodeObjectForKey:key_ns_string];
+    if font != nil {
+        () = msg![env; this setFont:font];
+    }
+
+    let key_ns_string = get_static_str(env, "UITextAlignment");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let alignment: i32 = msg![env; coder decodeIntForKey:key_ns_string];
+        () = msg![env; this setTextAlignment:(alignment as UITextAlignment)];
+    }
+
+    let key_ns_string = get_static_str(env, "UILineBreakMode");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let mode: i32 = msg![env; coder decodeIntForKey:key_ns_string];
+        () = msg![env; this setLineBreakMode:(mode as UILineBreakMode)];
+    }
+
+    let key_ns_string = get_static_str(env, "UINumberOfLines");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let lines: i32 = msg![env; coder decodeIntForKey:key_ns_string];
+        () = msg![env; this setNumberOfLines:(lines as NSInteger)];
+    }
+
+    let key_ns_string = get_static_str(env, "UIShadowColor");
+    let shadow_color: id = msg![env; coder decodeObjectForKey:key_ns_string];
+    if shadow_color != nil {
+        () = msg![env; this setShadowColor:shadow_color];
+    }
+
+    let key_ns_string = get_static_str(env, "UIShadowOffset");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let offset: CGSize = msg![env; coder decodeCGSizeForKey:key_ns_string];
+        () = msg![env; this setShadowOffset:offset];
+    }
+
     let key_ns_string = get_static_str(env, "UIBackgroundColor");
     let bg_color: id = msg![env; coder decodeObjectForKey:key_ns_string];
     let bg_color = if bg_color == nil {

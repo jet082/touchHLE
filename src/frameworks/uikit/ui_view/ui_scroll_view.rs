@@ -67,6 +67,60 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.alloc_object(this, host_object, &mut env.mem)
 }
 
+- (id)initWithCoder:(id)coder {
+    this = msg_super![env; this initWithCoder:coder];
+
+    let key_ns_string = get_static_str(env, "UIContentSize");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let size: CGSize = msg![env; coder decodeCGSizeForKey:key_ns_string];
+        () = msg![env; this setContentSize:size];
+    }
+
+    let key_ns_string = get_static_str(env, "UIContentOffset");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let offset: CGPoint = msg![env; coder decodeCGPointForKey:key_ns_string];
+        () = msg![env; this setContentOffset:offset];
+    }
+
+    let key_ns_string = get_static_str(env, "UIContentInset");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let inset: UIEdgeInsets = msg![env; coder decodeUIEdgeInsetsForKey:key_ns_string];
+        () = msg![env; this setContentInset:inset];
+    }
+
+    let key_ns_string = get_static_str(env, "UIBounces");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let bounces: bool = msg![env; coder decodeBoolForKey:key_ns_string];
+        () = msg![env; this setBounces:bounces];
+    }
+
+    let key_ns_string = get_static_str(env, "UIScrollEnabled");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let enabled: bool = msg![env; coder decodeBoolForKey:key_ns_string];
+        () = msg![env; this setScrollEnabled:enabled];
+    }
+
+    let key_ns_string = get_static_str(env, "UIPagingEnabled");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let enabled: bool = msg![env; coder decodeBoolForKey:key_ns_string];
+        () = msg![env; this setPagingEnabled:enabled];
+    }
+
+    let key_ns_string = get_static_str(env, "UIShowsHorizontalScrollIndicator");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let shows: bool = msg![env; coder decodeBoolForKey:key_ns_string];
+        () = msg![env; this setShowsHorizontalScrollIndicator:shows];
+    }
+
+    let key_ns_string = get_static_str(env, "UIShowsVerticalScrollIndicator");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let shows: bool = msg![env; coder decodeBoolForKey:key_ns_string];
+        () = msg![env; this setShowsVerticalScrollIndicator:shows];
+    }
+
+    this
+}
+
 - (id)delegate {
     env.objc.borrow::<UIScrollViewHostObject>(this).delegate
 }

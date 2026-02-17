@@ -97,6 +97,8 @@ fn update(env: &mut Environment, this: id) {
     let background_image_view: id = msg![env; this backgroundImageView];
     let background_image: id = msg![env; this currentBackgroundImage];
     () = msg![env; background_image_view setImage:background_image];
+
+    () = msg![env; this layoutSubviews];
 }
 
 fn init_common(env: &mut Environment, this: id) -> id {
@@ -202,32 +204,39 @@ pub const CLASSES: ClassExports = objc_classes! {
         to_rust_string(env, desc)
     });
 
-    // It's not entirely clear how the state information is encoded
-    // in this dict.
-    // TODO: support decoding properties of other states
-    let key_idx: id = msg_class![env; NSNumber numberWithLongLong:0i64];
-    let button_content: id = msg![env; dict objectForKey:key_idx];
+    // Decode content for all states present in the dictionary
+    let all_keys: id = msg![env; dict allKeys];
+    let count: NSUInteger = msg![env; all_keys count];
+    for i in 0..count {
+        let key: id = msg![env; all_keys objectAtIndex:i];
+        let state: i64 = msg![env; key longLongValue];
+        let state = state as UIControlState;
 
-    let title: id = msg![env; button_content title];
-    if title != nil {
-        log_dbg!("UIButton initWithCoder: title {}", to_rust_string(env, title));
-        () = msg![env; this setTitle:title forState:UIControlStateNormal];
-    }
+        let button_content: id = msg![env; dict objectForKey:key];
 
-    let title_color: id = msg![env; button_content titleColor];
-    if title_color != nil {
-        log_dbg!("UIButton initWithCoder: title_color {}", to_rust_string(env, title_color));
-        () = msg![env; this setTitleColor:title_color forState:UIControlStateNormal];
-    }
+        let title: id = msg![env; button_content title];
+        if title != nil {
+            log_dbg!("UIButton initWithCoder: title {} for state {}", to_rust_string(env, title), state);
+            () = msg![env; this setTitle:title forState:state];
+        }
 
-    let image: id = msg![env; button_content image];
-    if image != nil {
-        () = msg![env; this setImage:image forState:UIControlStateNormal];
-    }
+        let title_color: id = msg![env; button_content titleColor];
+        if title_color != nil {
+            log_dbg!("UIButton initWithCoder: title_color {:?} for state {}", title_color, state);
+            () = msg![env; this setTitleColor:title_color forState:state];
+        }
 
-    let background_image: id = msg![env; button_content backgroundImage];
-    if background_image != nil {
-        () = msg![env; this setBackgroundImage:background_image forState:UIControlStateNormal];
+        let image: id = msg![env; button_content image];
+        if image != nil {
+            log_dbg!("UIButton initWithCoder: image {:?} for state {}", image, state);
+            () = msg![env; this setImage:image forState:state];
+        }
+
+        let background_image: id = msg![env; button_content backgroundImage];
+        if background_image != nil {
+            log_dbg!("UIButton initWithCoder: background_image {:?} for state {}", background_image, state);
+            () = msg![env; this setBackgroundImage:background_image forState:state];
+        }
     }
 
     // TODO: decode other properties
