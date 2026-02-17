@@ -39,6 +39,8 @@ struct UIButtonContentHostObject {
     title_color: id,
     /// `UIImage*`
     image: id,
+    /// `UIImage*`
+    background_image: id,
 }
 impl HostObject for UIButtonContentHostObject {}
 
@@ -221,6 +223,11 @@ pub const CLASSES: ClassExports = objc_classes! {
     let image: id = msg![env; button_content image];
     if image != nil {
         () = msg![env; this setImage:image forState:UIControlStateNormal];
+    }
+
+    let background_image: id = msg![env; button_content backgroundImage];
+    if background_image != nil {
+        () = msg![env; this setBackgroundImage:background_image forState:UIControlStateNormal];
     }
 
     // TODO: decode other properties
@@ -476,15 +483,21 @@ pub const CLASSES: ClassExports = objc_classes! {
     let image: id = msg![env; coder decodeObjectForKey:image_key];
     log_dbg!("UIButtonContent: UIImage -> {:?}", image);
 
+    let background_image_key = get_static_str(env, "UIBackgroundImage");
+    let background_image: id = msg![env; coder decodeObjectForKey:background_image_key];
+    log_dbg!("UIButtonContent: UIBackgroundImage -> {:?}", background_image);
+
     // TODO: decode other properties
 
     retain(env, title);
     retain(env, title_color);
     retain(env, image);
+    retain(env, background_image);
     let host_obj = env.objc.borrow_mut::<UIButtonContentHostObject>(this);
     host_obj.title = title;
     host_obj.title_color = title_color;
     host_obj.image = image;
+    host_obj.background_image = background_image;
 
     this
 }
@@ -498,13 +511,17 @@ pub const CLASSES: ClassExports = objc_classes! {
 - (id)image {
     env.objc.borrow::<UIButtonContentHostObject>(this).image
 }
+- (id)backgroundImage {
+    env.objc.borrow::<UIButtonContentHostObject>(this).background_image
+}
 
 - (id)description {
     let title = env.objc.borrow::<UIButtonContentHostObject>(this).title;
     let title_color = env.objc.borrow::<UIButtonContentHostObject>(this).title_color;
     let image = env.objc.borrow::<UIButtonContentHostObject>(this).image;
+    let background_image = env.objc.borrow::<UIButtonContentHostObject>(this).background_image;
     let desc_str = format!(
-        "UIButtonContent({this:?}, title {title:?}, title_color {title_color:?}, image {image:?})"
+        "UIButtonContent({this:?}, title {title:?}, title_color {title_color:?}, image {image:?}, background_image {background_image:?})"
     );
     let desc = from_rust_string(env, desc_str);
     autorelease(env, desc)
@@ -514,11 +531,13 @@ pub const CLASSES: ClassExports = objc_classes! {
     let &UIButtonContentHostObject {
         title,
         title_color,
-        image
+        image,
+        background_image
     } = env.objc.borrow(this);
     release(env, title);
     release(env, title_color);
     release(env, image);
+    release(env, background_image);
 
     env.objc.dealloc_object(this, &mut env.mem)
 }

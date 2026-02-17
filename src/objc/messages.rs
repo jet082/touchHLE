@@ -63,6 +63,17 @@ fn objc_msgSend_inner(env: &mut Environment, receiver: id, selector: SEL, super2
                 ..
             } = class_host_object.as_any().downcast_ref().unwrap();
 
+            let orig_host_object = env.objc.get_host_object(orig_class).unwrap();
+            if let Some(&super::ClassHostObject {
+                ref methods,
+                ..
+            }) = orig_host_object.as_any().downcast_ref() {
+                let method_names: Vec<String> = methods.keys().map(|s| s.as_str(&env.mem).to_string()).collect();
+                log!("Methods in class \"{}\": {:?}", name, method_names);
+            } else {
+                log!("Class \"{}\" ({:?}) is not a host-implemented class.", name, orig_class);
+            }
+
             panic!(
                 "{} {:?} ({}class \"{}\", {:?}){} does not respond to selector \"{}\"!",
                 if is_metaclass { "Class" } else { "Object" },
@@ -95,6 +106,7 @@ fn objc_msgSend_inner(env: &mut Environment, receiver: id, selector: SEL, super2
             }
 
             if let Some(imp) = methods.get(&selector) {
+                log_dbg!("Found implementation for selector \"{}\" in class \"{}\"", selector.as_str(&env.mem), name);
                 match imp {
                     IMP::Host(host_imp) => {
                         // TODO: do type checks when calling GuestIMPs too.

@@ -335,6 +335,14 @@ pub const CLASSES: ClassExports = objc_classes! {
     let key_ns_string = get_static_str(env, "UIBackgroundColor");
     let bg_color: id = msg![env; coder decodeObjectForKey:key_ns_string];
 
+    let key_ns_string = get_static_str(env, "UIBackgroundImage");
+    let bg_image: id = msg![env; coder decodeObjectForKey:key_ns_string];
+    if bg_image != nil {
+        let layer: id = msg![env; this layer];
+        let cg_image: id = msg![env; bg_image CGImage];
+        () = msg![env; layer setContents:cg_image];
+    }
+
     let key_ns_string = get_static_str(env, "UITag");
     let tag: NSInteger = msg![env; coder decodeIntegerForKey:key_ns_string];
 
