@@ -9,10 +9,10 @@ use super::ui_graphics::UIGraphicsGetCurrentContext;
 use crate::font::{Font, TextAlignment, WrapMode};
 use crate::frameworks::core_graphics::cg_bitmap_context::CGBitmapContextDrawer;
 use crate::frameworks::core_graphics::{CGFloat, CGPoint, CGRect, CGSize};
-use crate::frameworks::foundation::ns_string::to_rust_string;
+use crate::frameworks::foundation::ns_string::{get_static_str, to_rust_string};
 use crate::frameworks::foundation::NSInteger;
-use crate::objc::{autorelease, id, objc_classes, ClassExports, HostObject};
-use crate::Environment;
+use crate::objc::{autorelease, id, nil, objc_classes, ClassExports, HostObject};
+use crate::{msg, Environment};
 use std::collections::HashMap;
 use std::ops::Range;
 
@@ -95,6 +95,14 @@ pub const CLASSES: ClassExports = objc_classes! {
 
 @implementation UIFont: NSObject
 
++ (id)alloc {
+    let host_object = UIFontHostObject {
+        size: 17.0,
+        kind: FontKind::SansRegular,
+    };
+    env.objc.alloc_object(this, Box::new(host_object), &mut env.mem)
+}
+
 + (id)systemFontOfSize:(CGFloat)size {
     let host_object = UIFontHostObject {
         size,
@@ -133,6 +141,27 @@ pub const CLASSES: ClassExports = objc_classes! {
     autorelease(env, new)
 }
 
+- (id)initWithCoder:(id)coder {
+    let name_key = get_static_str(env, "UIFontName");
+    let name: id = msg![env; coder decodeObjectForKey:name_key];
+
+    let size_key = get_static_str(env, "UIFontSize");
+    let size: CGFloat = msg![env; coder decodeFloatForKey:size_key];
+
+    let kind = if name != nil {
+        let name_str = to_rust_string(env, name).to_string();
+        get_equivalent_font(&name_str).unwrap_or(FontKind::SansRegular)
+    } else {
+        FontKind::SansRegular
+    };
+
+    let host_object = env.objc.borrow_mut::<UIFontHostObject>(this);
+    host_object.size = if size > 0.0 { size } else { 17.0 };
+    host_object.kind = kind;
+
+    this
+}
+
 - (CGFloat)ascender {
     let host_object = env.objc.borrow::<UIFontHostObject>(this);
     let font = env.framework_state.uikit.ui_font.get_font_by_kind(host_object.kind);
@@ -157,10 +186,17 @@ fn convert_line_break_mode(ui_mode: UILineBreakMode) -> WrapMode {
     match ui_mode {
         UILineBreakModeWordWrap => WrapMode::Word,
         UILineBreakModeCharacterWrap => WrapMode::Char,
-        // TODO: support this properly; fake support is so that UILabel works,
-        // which has this as its default line break mode
+        UILineBreakModeClip => WrapMode::Char,
+        UILineBreakModeHeadTruncation => WrapMode::Word,
         UILineBreakModeTailTruncation => WrapMode::Word,
-        _ => unimplemented!("TODO: line break mode {}", ui_mode),
+        UILineBreakModeMiddleTruncation => WrapMode::Word,
+        _ => {
+            log!(
+                "Warning: unknown UILineBreakMode {}, defaulting to Word",
+                ui_mode
+            );
+            WrapMode::Word
+        }
     }
 }
 

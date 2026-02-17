@@ -41,7 +41,13 @@ fn objc_msgSend_inner(env: &mut Environment, receiver: id, selector: SEL, super2
     }
 
     let orig_class = super2.unwrap_or_else(|| ObjC::read_isa(receiver, &env.mem));
-    assert!(orig_class != nil);
+    if orig_class == nil {
+        panic!(
+            "Object {:?} has a nil ISA! (Sending selector \"{}\")",
+            receiver,
+            selector.as_str(&env.mem)
+        );
+    }
 
     // Traverse the chain of superclasses to find the method implementation.
 
@@ -50,12 +56,28 @@ fn objc_msgSend_inner(env: &mut Environment, receiver: id, selector: SEL, super2
         if class == nil {
             assert!(class != orig_class);
 
-            let class_host_object = env.objc.get_host_object(orig_class).unwrap();
-            let &super::ClassHostObject {
-                ref name,
-                is_metaclass,
-                ..
-            } = class_host_object.as_any().downcast_ref().unwrap();
+            let name = env.objc.try_get_class_name(orig_class).unwrap_or("Unknown");
+            let mut is_metaclass = false;
+
+            if let Some(host_obj) = env.objc.get_host_object(orig_class) {
+                if let Some(c) = host_obj.as_any().downcast_ref::<super::ClassHostObject>() {
+                    is_metaclass = c.is_metaclass;
+                    let method_names: Vec<String> =
+                        c.methods.keys().map(|s| s.as_str(&env.mem).to_string()).collect();
+                    log!("Methods in class \"{}\": {:?}", name, method_names);
+                } else {
+                    if let Some(c) = host_obj.as_any().downcast_ref::<super::UnimplementedClass>() {
+                        is_metaclass = c.is_metaclass;
+                    } else if let Some(c) = host_obj.as_any().downcast_ref::<super::FakeClass>() {
+                        is_metaclass = c.is_metaclass;
+                    }
+                    log!(
+                        "Class \"{}\" ({:?}) is not a host-implemented class.",
+                        name,
+                        orig_class
+                    );
+                }
+            }
 
             panic!(
                 "{} {:?} ({}class \"{}\", {:?}){} does not respond to selector \"{}\"!",
@@ -73,9 +95,12 @@ fn objc_msgSend_inner(env: &mut Environment, receiver: id, selector: SEL, super2
             );
         }
 
-        let host_object = env.objc.get_host_object(class).unwrap();
+        let host_object = env.objc.get_host_object(class).unwrap_or_else(|| {
+            panic!("nil host object for class {class:?} (originally {orig_class:?})");
+        });
 
         if let Some(&super::ClassHostObject {
+            ref name,
             superclass,
             ref methods,
             ..
@@ -89,6 +114,7 @@ fn objc_msgSend_inner(env: &mut Environment, receiver: id, selector: SEL, super2
             }
 
             if let Some(imp) = methods.get(&selector) {
+                log_dbg!("Found implementation for selector \"{}\" in class \"{}\"", selector.as_str(&env.mem), name);
                 match imp {
                     IMP::Host(host_imp) => {
                         if env.options.objc_type_checks {
@@ -152,8 +178,10 @@ Type mismatch when sending message {} to {:?}!
             env.cpu.regs_mut()[0..2].fill(0);
             return;
         } else {
+            let name = env.objc.try_get_class_name(class).unwrap_or("Unknown");
             panic!(
-                "Item {class:?} in superclass chain of object {receiver:?}'s class {orig_class:?} has an unexpected host object type."
+                "Item {class:?} (\"{}\") in superclass chain of object {receiver:?}'s class {orig_class:?} has an unexpected host object type.",
+                name
             );
         }
     }

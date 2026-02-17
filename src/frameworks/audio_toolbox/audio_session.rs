@@ -32,6 +32,7 @@ const kAudioSessionProperty_PreferredHardwareSampleRate: AudioSessionPropertyID 
 
 const kAudioSessionCategory_SoloAmbientSound: u32 = fourcc(b"solo");
 const kAudioSessionProperty_CurrentHardwareIOBufferDuration: u32 = fourcc(b"chbd");
+const kAudioSessionProperty_OverrideCategoryDefaultToSpeaker: AudioSessionPropertyID = fourcc(b"idem");
 
 pub struct State {
     audio_session_category: u32,
@@ -64,7 +65,7 @@ fn AudioSessionInitialize(
     in_client_data: MutVoidPtr,
 ) -> OSStatus {
     let result = 0; // success
-    log!(
+    log_dbg!(
         "TODO: AudioSessionInitialize({:?}, {:?}, {:?}, {:?}) -> {:?}",
         in_run_loop,
         in_run_loop_mode,
@@ -92,9 +93,14 @@ fn AudioSessionGetProperty(
     out_data: MutVoidPtr,
 ) -> OSStatus {
     let required_size = get_audio_session_property_size(in_ID);
+    if required_size == 0 {
+        log!("Warning: AudioSessionGetProperty({}) failed: unimplemented", debug_fourcc(in_ID));
+        return 0; // Success (stub)
+    }
+
     let io_data_size_value = env.mem.read(io_data_size);
     if io_data_size_value != required_size {
-        log!("Warning: AudioSessionGetProperty() failed");
+        log!("Warning: AudioSessionGetProperty({}) failed: bad size {} (expected {})", debug_fourcc(in_ID), io_data_size_value, required_size);
         return kAudioSessionBadPropertySizeError;
     }
 
@@ -124,7 +130,13 @@ fn AudioSessionGetProperty(
             let value: f32 = state.current_hardware_io_buffer_duration;
             env.mem.write(out_data.cast(), value);
         }
-        _ => unreachable!(),
+        kAudioSessionProperty_OverrideCategoryDefaultToSpeaker => {
+            let value: u32 = 0; // false
+            env.mem.write(out_data.cast(), value);
+        }
+        _ => {
+             log!("Warning: AudioSessionGetProperty({}) unimplemented", debug_fourcc(in_ID));
+        }
     }
 
     let result = 0; // success
@@ -146,15 +158,21 @@ fn AudioSessionSetProperty(
     in_data_size: u32,
     in_data: ConstVoidPtr,
 ) -> OSStatus {
-    let required_size: GuestUSize = match in_ID {
-        kAudioSessionProperty_AudioCategory => guest_size_of::<u32>(),
-        kAudioSessionProperty_PreferredHardwareIOBufferDuration => guest_size_of::<f32>(),
-        kAudioSessionProperty_PreferredHardwareSampleRate => guest_size_of::<f64>(),
-        _ => unimplemented!("Unimplemented property ID: {}", debug_fourcc(in_ID)),
+    let required_size: Option<GuestUSize> = match in_ID {
+        kAudioSessionProperty_AudioCategory => Some(guest_size_of::<u32>()),
+        kAudioSessionProperty_PreferredHardwareIOBufferDuration => Some(guest_size_of::<f32>()),
+        kAudioSessionProperty_PreferredHardwareSampleRate => Some(guest_size_of::<f64>()),
+        kAudioSessionProperty_OverrideCategoryDefaultToSpeaker => Some(guest_size_of::<u32>()),
+        _ => None,
     };
-    if in_data_size != required_size {
-        log!("Warning: AudioSessionSetProperty() failed");
-        return kAudioSessionBadPropertySizeError;
+    if let Some(required_size) = required_size {
+        if in_data_size != required_size {
+            log!("Warning: AudioSessionSetProperty({}) failed: bad size {} (expected {})", debug_fourcc(in_ID), in_data_size, required_size);
+            return kAudioSessionBadPropertySizeError;
+        }
+    } else {
+        log!("Warning: AudioSessionSetProperty({}) unimplemented", debug_fourcc(in_ID));
+        return 0; // Success (stub)
     }
     if in_ID == kAudioSessionProperty_PreferredHardwareSampleRate {
         env.framework_state
@@ -171,7 +189,7 @@ fn AudioSessionSetProperty(
     }
 
     let result = 0; // success
-    log!(
+    log_dbg!(
         "TODO: AudioSessionSetProperty({:?}, {:?}, {:?} ({:?})) -> {:?}",
         in_ID,
         in_data_size,
@@ -184,7 +202,7 @@ fn AudioSessionSetProperty(
 
 fn AudioSessionSetActive(_env: &mut Environment, active: bool) -> OSStatus {
     let result = 0; // success
-    log!("TODO: AudioSessionSetActive({:?}) -> {:?}", active, result);
+    log_dbg!("TODO: AudioSessionSetActive({:?}) -> {:?}", active, result);
     result
 }
 
@@ -230,7 +248,11 @@ fn get_audio_session_property_size(in_ID: AudioSessionPropertyID) -> GuestUSize 
         kAudioSessionProperty_CurrentHardwareOutputNumberChannels => guest_size_of::<u32>(),
         kAudioSessionProperty_CurrentHardwareOutputVolume => guest_size_of::<f32>(),
         kAudioSessionProperty_CurrentHardwareIOBufferDuration => guest_size_of::<f32>(),
-        _ => unimplemented!("Unimplemented property ID: {}", debug_fourcc(in_ID)),
+        kAudioSessionProperty_OverrideCategoryDefaultToSpeaker => guest_size_of::<u32>(),
+        _ => {
+            log!("Warning: AudioSessionGetPropertySize({}) unimplemented", debug_fourcc(in_ID));
+            0
+        }
     }
 }
 

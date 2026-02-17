@@ -135,6 +135,19 @@ pub const CLASSES: ClassExports = objc_classes! {
     )
 }
 
+- (f64)decodeDoubleForKey:(id)key { // NSString *
+    // TODO: Check bounds, raise NSRangeException if it doesn't fit
+    get_value_to_decode_for_key(env, this, key).map_or(
+        0.0,
+        |value| {
+            let &ValueVariant::Double(d) = value.value() else {
+                unreachable!()
+            };
+            d
+        }
+    )
+}
+
 - (NSInteger)decodeIntegerForKey:(id)key { // NSString *
     // TODO: Check bounds, raise NSRangeException if it doesn't fit
     get_value_to_decode_for_key(env, this, key).map_or(
@@ -202,6 +215,30 @@ pub const CLASSES: ClassExports = objc_classes! {
         origin: CGPoint { x, y },
         size: CGSize { width, height },
     }
+}
+- (CGSize)decodeCGSizeForKey:(id)key { // NSString*
+    let val = get_value_to_decode_for_key(env, this, key).unwrap();
+    let ValueVariant::Data(data) = val.value() else {
+        unreachable!()
+    };
+    assert_eq!(6, data[0]);
+    let width = f32::from_le_bytes(data[1..5].try_into().unwrap());
+    let height = f32::from_le_bytes(data[5..9].try_into().unwrap());
+    log_dbg!("decoded CGSize {} {}", width, height);
+    CGSize { width, height }
+}
+- (crate::frameworks::uikit::ui_geometry::UIEdgeInsets)decodeUIEdgeInsetsForKey:(id)key { // NSString*
+    let val = get_value_to_decode_for_key(env, this, key).unwrap();
+    let ValueVariant::Data(data) = val.value() else {
+        unreachable!()
+    };
+    assert_eq!(6, data[0]);
+    let top = f32::from_le_bytes(data[1..5].try_into().unwrap());
+    let left = f32::from_le_bytes(data[5..9].try_into().unwrap());
+    let bottom = f32::from_le_bytes(data[9..13].try_into().unwrap());
+    let right = f32::from_le_bytes(data[13..17].try_into().unwrap());
+    log_dbg!("decoded UIEdgeInsets {} {} {} {}", top, left, bottom, right);
+    crate::frameworks::uikit::ui_geometry::UIEdgeInsets { top, left, bottom, right }
 }
 
 @end

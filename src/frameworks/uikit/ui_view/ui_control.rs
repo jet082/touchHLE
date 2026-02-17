@@ -9,12 +9,14 @@
 //! - The [Target-Action section](https://developer.apple.com/library/archive/documentation/General/Conceptual/CocoaEncyclopedia/Target-Action/Target-Action.html) of Apple's "Concepts in Objective-C Programming".
 
 pub mod ui_button;
+pub mod ui_page_control;
 pub mod ui_segmented_control;
 pub mod ui_slider;
 pub mod ui_switch;
 pub mod ui_text_field;
 
 use crate::frameworks::core_graphics::CGPoint;
+use crate::frameworks::foundation::ns_string::get_static_str;
 use crate::frameworks::foundation::NSUInteger;
 use crate::objc::{
     id, impl_HostObject_with_superclass, msg, msg_send, msg_super, nil, objc_classes, release,
@@ -118,6 +120,24 @@ pub const CLASSES: ClassExports = objc_classes! {
     msg_super![env; this dealloc]
 }
 
+- (id)initWithCoder:(id)coder {
+    let this: id = msg_super![env; this initWithCoder: coder];
+
+    let key_ns_string = get_static_str(env, "UIEnabled");
+    if msg![env; coder containsValueForKey: key_ns_string] {
+        let enabled: bool = msg![env; coder decodeBoolForKey: key_ns_string];
+        () = msg![env; this setEnabled: enabled];
+    }
+
+    let key_ns_string = get_static_str(env, "UISelected");
+    if msg![env; coder containsValueForKey: key_ns_string] {
+        let selected: bool = msg![env; coder decodeBoolForKey: key_ns_string];
+        () = msg![env; this setSelected: selected];
+    }
+
+    this
+}
+
 - (UIControlState)state {
     let &UIControlHostObject {
         highlighted,
@@ -179,6 +199,9 @@ pub const CLASSES: ClassExports = objc_classes! {
     // default implementation, subclasses can override this, must call super
     // (for some reason, the docs say this default implementation updates the
     // tracking property? why here?)
+    env.objc.borrow_mut::<UIControlHostObject>(this).tracking = false;
+}
+- (())cancelTrackingWithEvent:(id)_event { // UIEvent*
     env.objc.borrow_mut::<UIControlHostObject>(this).tracking = false;
 }
 
@@ -260,6 +283,21 @@ pub const CLASSES: ClassExports = objc_classes! {
         true => UIControlEventTouchUpInside,
         false => UIControlEventTouchUpOutside,
     });
+}
+- (())touchesCancelled:(id)_touches // NSSet* of UITouch*
+               withEvent:(id)event { // UIEvent*
+    let tracked_touch = env.objc.borrow::<UIControlHostObject>(this).tracked_touch;
+    if tracked_touch == nil {
+        return;
+    }
+    () = msg![env; this cancelTrackingWithEvent:event];
+    release(env, tracked_touch);
+    env.objc.borrow_mut::<UIControlHostObject>(this).tracked_touch = nil;
+    () = msg![env; this setHighlighted:false];
+}
+
+- (())sendActionsForControlEvents:(UIControlEvents)controlEvents {
+    send_actions(env, this, nil, controlEvents);
 }
 
 - (())addTarget:(id)target

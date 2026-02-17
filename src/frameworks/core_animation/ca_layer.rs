@@ -22,7 +22,7 @@ use crate::frameworks::core_graphics::cg_image::{
     kCGImageAlphaPremultipliedLast, kCGImageByteOrder32Big,
 };
 use crate::frameworks::core_graphics::{CGFloat, CGPoint, CGRect, CGSize};
-use crate::frameworks::foundation::ns_string::{self, to_rust_string};
+use crate::frameworks::foundation::ns_string::{self, get_static_str, to_rust_string};
 use crate::mem::{GuestUSize, Ptr};
 use crate::objc::{
     autorelease, id, msg, msg_class, nil, objc_classes, release, retain, todo_objc_setter,
@@ -46,6 +46,7 @@ pub(super) struct CALayerHostObject {
     pub(super) hidden: bool,
     pub(super) opaque: bool,
     pub(super) opacity: f32,
+    pub(super) masks_to_bounds: bool,
     pub(super) background_color: Option<CGColorHostObject>,
     pub(super) corner_radius: CGFloat,
     pub(super) needs_display: bool,
@@ -124,6 +125,7 @@ pub const CLASSES: ClassExports = objc_classes! {
         hidden: false,
         opaque: false,
         opacity: 1.0,
+        masks_to_bounds: false,
         background_color: None, // transparency
         corner_radius: 0.0,
         needs_display: false,
@@ -237,6 +239,21 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow::<CALayerHostObject>(this).bounds
 }
 - (())setBounds:(CGRect)bounds {
+    let old_bounds = env.objc.borrow::<CALayerHostObject>(this).bounds;
+    if bounds == old_bounds {
+        return;
+    }
+
+    let key = get_static_str(env, "bounds");
+    let action: id = msg![env; this actionForKey:key];
+    if action != nil && action != msg_class![env; NSNull null] {
+        let from_value: id = msg_class![env; NSValue valueWithCGRect:old_bounds];
+        let to_value: id = msg_class![env; NSValue valueWithCGRect:bounds];
+        () = msg![env; action setFromValue:from_value];
+        () = msg![env; action setToValue:to_value];
+        crate::frameworks::core_animation::ca_transaction::State::add_animation(env, this, action);
+    }
+
     let host_object = env.objc.borrow_mut::<CALayerHostObject>(this);
     host_object.bounds = bounds;
     if host_object.needs_display_on_bounds_change {
@@ -247,6 +264,21 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow::<CALayerHostObject>(this).position
 }
 - (())setPosition:(CGPoint)position {
+    let old_position = env.objc.borrow::<CALayerHostObject>(this).position;
+    if position == old_position {
+        return;
+    }
+
+    let key = get_static_str(env, "position");
+    let action: id = msg![env; this actionForKey:key];
+    if action != nil && action != msg_class![env; NSNull null] {
+        let from_value: id = msg_class![env; NSValue valueWithCGPoint:old_position];
+        let to_value: id = msg_class![env; NSValue valueWithCGPoint:position];
+        () = msg![env; action setFromValue:from_value];
+        () = msg![env; action setToValue:to_value];
+        crate::frameworks::core_animation::ca_transaction::State::add_animation(env, this, action);
+    }
+
     env.objc.borrow_mut::<CALayerHostObject>(this).position = position;
 }
 - (CGPoint)anchorPoint {
@@ -259,6 +291,21 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow::<CALayerHostObject>(this).affine_transform
 }
 - (())setAffineTransform:(CGAffineTransform)affine_transform {
+    let old_transform = env.objc.borrow::<CALayerHostObject>(this).affine_transform;
+    if affine_transform == old_transform {
+        return;
+    }
+
+    let key = get_static_str(env, "transform");
+    let action: id = msg![env; this actionForKey:key];
+    if action != nil && action != msg_class![env; NSNull null] {
+        let from_value: id = msg_class![env; NSValue valueWithCGAffineTransform:old_transform];
+        let to_value: id = msg_class![env; NSValue valueWithCGAffineTransform:affine_transform];
+        () = msg![env; action setFromValue:from_value];
+        () = msg![env; action setToValue:to_value];
+        crate::frameworks::core_animation::ca_transaction::State::add_animation(env, this, action);
+    }
+
     env.objc.borrow_mut::<CALayerHostObject>(this).affine_transform = affine_transform;
 }
 
@@ -322,7 +369,29 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow::<CALayerHostObject>(this).opacity
 }
 - (())setOpacity:(f32)opacity {
+    let old_opacity = env.objc.borrow::<CALayerHostObject>(this).opacity;
+    if opacity == old_opacity {
+        return;
+    }
+
+    let key = get_static_str(env, "opacity");
+    let action: id = msg![env; this actionForKey:key];
+    if action != nil && action != msg_class![env; NSNull null] {
+        let from_value: id = msg_class![env; NSNumber numberWithFloat:old_opacity];
+        let to_value: id = msg_class![env; NSNumber numberWithFloat:opacity];
+        () = msg![env; action setFromValue:from_value];
+        () = msg![env; action setToValue:to_value];
+        crate::frameworks::core_animation::ca_transaction::State::add_animation(env, this, action);
+    }
+
     env.objc.borrow_mut::<CALayerHostObject>(this).opacity = opacity;
+}
+
+- (bool)masksToBounds {
+    env.objc.borrow::<CALayerHostObject>(this).masks_to_bounds
+}
+- (())setMasksToBounds:(bool)masks_to_bounds {
+    env.objc.borrow_mut::<CALayerHostObject>(this).masks_to_bounds = masks_to_bounds;
 }
 
 - (CGColorRef)backgroundColor {
@@ -362,6 +431,17 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 - (())setNeedsDisplayOnBoundsChange:(bool)value {
     env.objc.borrow_mut::<CALayerHostObject>(this).needs_display_on_bounds_change = value;
+}
+
+- (id)actionForKey:(id)key {
+    let delegate = env.objc.borrow::<CALayerHostObject>(this).delegate;
+    if delegate != nil {
+        let sel = env.objc.lookup_selector("actionForLayer:forKey:").unwrap();
+        if env.objc.object_has_method(&env.mem, delegate, sel) {
+            return msg![env; delegate actionForLayer:this forKey:key];
+        }
+    }
+    nil
 }
 
 // TODO: support setNeedsDisplayInRect:

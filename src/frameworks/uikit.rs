@@ -51,6 +51,7 @@ pub const DYLIB: crate::dyld::HostDylib = crate::dyld::HostDylib {
         ui_view::ui_alert_view::CLASSES,
         ui_view::ui_control::CLASSES,
         ui_view::ui_control::ui_button::CLASSES,
+        ui_view::ui_control::ui_page_control::CLASSES,
         ui_view::ui_control::ui_segmented_control::CLASSES,
         ui_view::ui_control::ui_slider::CLASSES,
         ui_view::ui_control::ui_text_field::CLASSES,
@@ -113,7 +114,15 @@ pub fn handle_events(env: &mut Environment) -> Option<Instant> {
                 ui_application::exit(env);
             }
             Event::TouchesDown(..) | Event::TouchesMove(..) | Event::TouchesUp(..) => {
-                ui_touch::handle_event(env, event)
+                if env
+                    .framework_state
+                    .uikit
+                    .ui_application
+                    .ignoring_interaction_events_count
+                    == 0
+                {
+                    ui_touch::handle_event(env, event)
+                }
             }
             Event::AppWillResignActive => {
                 // Getting this event means touchHLE is becoming inactive, e.g.

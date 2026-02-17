@@ -23,18 +23,41 @@ use crate::frameworks::core_graphics::cg_color::CGColorRef;
 use crate::frameworks::core_graphics::cg_context::{CGContextClearRect, CGContextRef};
 use crate::frameworks::core_graphics::{CGFloat, CGPoint, CGRect, CGSize};
 use crate::frameworks::foundation::ns_string::get_static_str;
-use crate::frameworks::foundation::{ns_array, NSInteger, NSUInteger};
+use crate::frameworks::foundation::{ns_array, NSInteger, NSTimeInterval, NSUInteger};
+use crate::mem::MutVoidPtr;
 use crate::objc::{
-    autorelease, id, msg, msg_class, nil, objc_classes, release, retain, todo_objc_setter, Class,
-    ClassExports, HostObject, NSZonePtr, ObjC,
+    autorelease, id, msg, msg_class, msg_send, nil, objc_classes, release, retain,
+    todo_objc_setter, Class, ClassExports, HostObject, NSZonePtr, ObjC, SEL,
 };
 use crate::Environment;
+
+pub struct AnimationBlock {
+    pub animation_id: id,
+    pub context: MutVoidPtr,
+    pub delegate: id,
+    pub will_start_selector: Option<SEL>,
+    pub did_stop_selector: Option<SEL>,
+    pub duration: NSTimeInterval,
+    pub delay: NSTimeInterval,
+    pub repeat_count: f32,
+    pub repeat_autoreverses: bool,
+    pub begins_from_current_state: bool,
+}
+
+pub struct AnimationBlockHostObject {
+    pub animation_id: id,
+    pub context: MutVoidPtr,
+    pub delegate: id,
+    pub did_stop_selector: Option<SEL>,
+}
+impl HostObject for AnimationBlockHostObject {}
 
 #[derive(Default)]
 pub struct State {
     /// List of views for internal purposes. Non-retaining!
     pub(super) views: Vec<id>,
     pub ui_window: ui_window::State,
+    pub(super) animation_stack: Vec<AnimationBlock>,
 }
 
 pub(super) struct UIViewHostObject {
@@ -110,11 +133,174 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.get_known_class("CALayer", &mut env.mem)
 }
 
++ (())beginAnimations:(id)animation_id context:(MutVoidPtr)context {
+    log!("[(UIView *)beginAnimations:{:?} context:{:?}]", animation_id, context);
+    () = msg_class![env; CATransaction begin];
+    retain(env, animation_id);
+    let state = &mut env.framework_state.uikit.ui_view;
+    state.animation_stack.push(AnimationBlock {
+        animation_id,
+        context,
+        delegate: nil,
+        will_start_selector: None,
+        did_stop_selector: None,
+        duration: 0.2, // standard default
+        delay: 0.0,
+        repeat_count: 0.0,
+        repeat_autoreverses: false,
+        begins_from_current_state: false,
+    });
+}
+
++ (())commitAnimations {
+    let block = env.framework_state.uikit.ui_view.animation_stack.pop();
+    if let Some(block) = block {
+        log!("[(UIView *)commitAnimations] id:{:?} duration:{} delay:{}", block.animation_id, block.duration, block.delay);
+
+        if block.delegate != nil {
+            if let Some(sel) = block.will_start_selector {
+                if env.objc.object_has_method(&env.mem, block.delegate, sel) {
+                    log!("Sending animationWillStart callback to {:?}", block.delegate);
+                    () = msg_send(env, (block.delegate, sel, block.animation_id, block.context));
+                }
+            }
+        }
+
+        () = msg_class![env; CATransaction commit];
+
+        let total_time = block.delay + block.duration;
+        if total_time > 0.0 {
+            // Deferred callback
+            let block_helper: id = msg_class![env; _touchHLE_UIViewAnimationBlock alloc];
+            let retained_delegate = retain(env, block.delegate);
+            {
+                let helper = env.objc.borrow_mut::<AnimationBlockHostObject>(block_helper);
+                helper.animation_id = block.animation_id;
+                helper.context = block.context;
+                helper.delegate = retained_delegate;
+                helper.did_stop_selector = block.did_stop_selector;
+            }
+            let sel = env.objc.lookup_selector("_fireDidStop:").unwrap();
+            () = msg![env; block_helper performSelector:sel withObject:nil afterDelay:total_time];
+            release(env, block_helper);
+        } else {
+            // Immediate callback
+            if block.delegate != nil {
+                if let Some(sel) = block.did_stop_selector {
+                    if env.objc.object_has_method(&env.mem, block.delegate, sel) {
+                        log!("Sending animationDidStop callback (sync) to {:?}", block.delegate);
+                        let finished: id = msg_class![env; NSNumber numberWithBool:true];
+                        () = msg_send(
+                            env,
+                            (block.delegate, sel, block.animation_id, finished, block.context),
+                        );
+                    }
+                }
+            }
+            release(env, block.animation_id);
+        }
+    } else {
+        log!("Warning: [(UIView *)commitAnimations] called without beginAnimations:! This is an imbalance and may cause issues.");
+    }
+}
+
++ (())setAnimationDuration:(NSTimeInterval)duration {
+    if let Some(block) = env.framework_state.uikit.ui_view.animation_stack.last_mut() {
+        block.duration = duration;
+    }
+    () = msg_class![env; CATransaction setAnimationDuration:duration];
+}
+
++ (())setAnimationCurve:(NSInteger)curve {
+    let name = match curve {
+        0 => "easeInEaseOut",
+        1 => "easeIn",
+        2 => "easeOut",
+        3 => "linear",
+        _ => {
+            log!("Warning: unknown UIViewAnimationCurve {}, defaulting to easeInEaseOut", curve);
+            "easeInEaseOut"
+        }
+    };
+    let name_str = get_static_str(env, name);
+    let function: id = msg_class![env; CAMediaTimingFunction functionWithName:name_str];
+    () = msg_class![env; CATransaction setAnimationTimingFunction:function];
+}
+
++ (())setAnimationDelegate:(id)delegate {
+    if let Some(block) = env.framework_state.uikit.ui_view.animation_stack.last_mut() {
+        block.delegate = delegate;
+    }
+}
+
++ (())setAnimationWillStartSelector:(SEL)selector {
+    if let Some(block) = env.framework_state.uikit.ui_view.animation_stack.last_mut() {
+        block.will_start_selector = Some(selector);
+    }
+}
+
++ (())setAnimationDidStopSelector:(SEL)selector {
+    if let Some(block) = env.framework_state.uikit.ui_view.animation_stack.last_mut() {
+        block.did_stop_selector = Some(selector);
+    }
+}
+
++ (())setAnimationDelay:(NSTimeInterval)delay {
+    if let Some(block) = env.framework_state.uikit.ui_view.animation_stack.last_mut() {
+        block.delay = delay;
+    }
+}
+
++ (())setAnimationStartDate:(id)_date {
+    log!("TODO: [(UIView *)setAnimationStartDate:{:?}]", _date);
+}
+
++ (())setAnimationRepeatCount:(f32)repeat_count {
+    if let Some(block) = env.framework_state.uikit.ui_view.animation_stack.last_mut() {
+        block.repeat_count = repeat_count;
+    }
+}
+
++ (())setAnimationRepeatAutoreverses:(bool)repeat_autoreverses {
+    if let Some(block) = env.framework_state.uikit.ui_view.animation_stack.last_mut() {
+        block.repeat_autoreverses = repeat_autoreverses;
+    }
+}
+
++ (())setAnimationBeginsFromCurrentState:(bool)from_current_state {
+    if let Some(block) = env.framework_state.uikit.ui_view.animation_stack.last_mut() {
+        block.begins_from_current_state = from_current_state;
+    }
+}
+
++ (())setAnimationTransition:(NSInteger)transition forView:(id)view cache:(bool)_cache {
+    log!("[(UIView *)setAnimationTransition:{} forView:{:?} cache:{}]", transition, view, _cache);
+    // This is often used for page flips, etc.
+    // We can't easily implement it correctly without more complex Core
+    // Animation support, but we can at least log it properly.
+}
+
++ (bool)areAnimationsEnabled {
+    true
+}
+
++ (())setAnimationsEnabled:(bool)_enabled {
+    log!("TODO: [(UIView *)setAnimationsEnabled:{}]", _enabled);
+}
+
 // TODO: accessors etc
 
 // initWithCoder: and initWithFrame: are basically UIView's designated
 // initializers. init is not, it's a shortcut for the latter.
 // Subclasses need to override both.
+
+- (id)actionForLayer:(id)_layer forKey:(id)event {
+    let state = &env.framework_state.uikit.ui_view;
+    if state.animation_stack.is_empty() {
+        return msg_class![env; NSNull null];
+    }
+    msg_class![env; CABasicAnimation animationWithKeyPath:event]
+}
 
 - (id)init {
     msg![env; this initWithFrame:(<CGRect as Default>::default())]
@@ -148,6 +334,12 @@ pub const CLASSES: ClassExports = objc_classes! {
     let key_ns_string = get_static_str(env, "UICenter");
     let center: CGPoint = msg![env; coder decodeCGPointForKey:key_ns_string];
 
+    let key_ns_string = get_static_str(env, "UIFrame");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let frame: CGRect = msg![env; coder decodeCGRectForKey:key_ns_string];
+        () = msg![env; this setFrame:frame];
+    }
+
     let key_ns_string = get_static_str(env, "UIHidden");
     let hidden: bool = msg![env; coder decodeBoolForKey:key_ns_string];
 
@@ -156,6 +348,39 @@ pub const CLASSES: ClassExports = objc_classes! {
 
     let key_ns_string = get_static_str(env, "UIBackgroundColor");
     let bg_color: id = msg![env; coder decodeObjectForKey:key_ns_string];
+
+    let key_ns_string = get_static_str(env, "UIAlpha");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let alpha: f32 = msg![env; coder decodeFloatForKey:key_ns_string];
+        () = msg![env; this setAlpha:(alpha as CGFloat)];
+    }
+
+    let key_ns_string = get_static_str(env, "UITransform");
+    let transform_string: id = msg![env; coder decodeObjectForKey:key_ns_string];
+    if transform_string != nil {
+        let transform = super::ui_geometry::CGAffineTransformFromString(env, transform_string);
+        () = msg![env; this setTransform:transform];
+    }
+
+    let key_ns_string = get_static_str(env, "UIContentMode");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let content_mode: i32 = msg![env; coder decodeIntForKey:key_ns_string];
+        () = msg![env; this setContentMode:(content_mode as NSInteger)];
+    }
+
+    let key_ns_string = get_static_str(env, "UIUserInteractionDisabled");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let disabled: bool = msg![env; coder decodeBoolForKey:key_ns_string];
+        () = msg![env; this setUserInteractionEnabled:(!disabled)];
+    }
+
+    let key_ns_string = get_static_str(env, "UIBackgroundImage");
+    let bg_image: id = msg![env; coder decodeObjectForKey:key_ns_string];
+    if bg_image != nil {
+        let layer: id = msg![env; this layer];
+        let cg_image: id = msg![env; bg_image CGImage];
+        () = msg![env; layer setContents:cg_image];
+    }
 
     let key_ns_string = get_static_str(env, "UITag");
     let tag: NSInteger = msg![env; coder decodeIntegerForKey:key_ns_string];
@@ -451,8 +676,13 @@ pub const CLASSES: ClassExports = objc_classes! {
     msg![env; layer setHidden:hidden]
 }
 
+- (bool)clipsToBounds {
+    let layer = env.objc.borrow::<UIViewHostObject>(this).layer;
+    msg![env; layer masksToBounds]
+}
 - (())setClipsToBounds:(bool)clips {
-    todo_objc_setter!(this, clips);
+    let layer = env.objc.borrow::<UIViewHostObject>(this).layer;
+    msg![env; layer setMasksToBounds:clips]
 }
 
 - (bool)isOpaque {
@@ -549,6 +779,12 @@ pub const CLASSES: ClassExports = objc_classes! {
 
 - (())setContentMode:(NSInteger)content_mode { // should be UIViewContentMode
     todo_objc_setter!(this, content_mode);
+}
+
+- (())setContentStretch:(CGRect)rect {
+    // This is used for resizable views (similar to resizable images).
+    // Not easily implementable without more complex layer contents support.
+    log!("TODO: [(UIView *){:?} setContentStretch:{:?}]", this, rect);
 }
 
 - (bool)clearsContextBeforeDrawing {
@@ -699,7 +935,52 @@ pub const CLASSES: ClassExports = objc_classes! {
     size
 }
 - (())sizeToFit {
-    log!("TODO: [(UIView *){:?} sizeToFit]", this);
+    let bounds: CGRect = msg![env; this bounds];
+    let size: CGSize = msg![env; this sizeThatFits:(bounds.size)];
+    () = msg![env; this setBounds:(CGRect {
+        origin: bounds.origin,
+        size
+    })];
+}
+
+@end
+
+@implementation _touchHLE_UIViewAnimationBlock: NSObject
+
++ (id)allocWithZone:(NSZonePtr)_zone {
+    let host_object = Box::new(AnimationBlockHostObject {
+        animation_id: nil,
+        context: MutVoidPtr::from_bits(0),
+        delegate: nil,
+        did_stop_selector: None,
+    });
+    env.objc.alloc_object(this, host_object, &mut env.mem)
+}
+
+- (())_fireDidStop:(id)_unused {
+    let block_obj = this;
+    let (delegate, animation_id, context, sel) = {
+        let block = env.objc.borrow::<AnimationBlockHostObject>(block_obj);
+        (block.delegate, block.animation_id, block.context, block.did_stop_selector)
+    };
+    if delegate != nil {
+        if let Some(sel) = sel {
+            if env.objc.object_has_method(&env.mem, delegate, sel) {
+                log!("Sending animationDidStop callback (deferred) to {:?}", delegate);
+                let finished: id = msg_class![env; NSNumber numberWithBool:true];
+                () = msg_send(
+                    env,
+                    (delegate, sel, animation_id, finished, context),
+                );
+            }
+        }
+        release(env, delegate); // Release retained delegate
+    }
+    release(env, animation_id);
+}
+
+- (())dealloc {
+    env.objc.dealloc_object(this, &mut env.mem);
 }
 
 @end

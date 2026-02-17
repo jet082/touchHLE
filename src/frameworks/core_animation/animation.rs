@@ -27,7 +27,7 @@ use crate::frameworks::core_animation::{ca_layer::CALayerHostObject, CACurrentMe
 use crate::frameworks::core_foundation::time::CFTimeInterval;
 use crate::frameworks::core_graphics::cg_color::CGColorHostObject;
 use crate::frameworks::foundation::ns_string::{from_rust_string, to_rust_string};
-use crate::objc::{id, msg, nil, release, retain};
+use crate::objc::{id, msg, msg_class, nil, release, retain};
 use crate::Environment;
 
 #[derive(Default)]
@@ -143,6 +143,11 @@ impl State {
             // Assuming all animations here are CABasicAnimation
             // TODO: Handle other types of animations
 
+            let basic_animation_class: id = msg_class![env; CABasicAnimation class];
+            if !msg![env; animation isKindOfClass:basic_animation_class] {
+                continue;
+            }
+
             let from_value: id = msg![env; animation fromValue];
             let to_value: id = msg![env; animation toValue];
             let by_value: id = msg![env; animation byValue];
@@ -194,6 +199,19 @@ impl State {
                     );
                     presentation.bounds = from_value + by_value * interpolation_amount;
                 }
+                "center" | "position" => {
+                    let from_value =
+                        id_as_option(from_value).map(|obj| msg![env; obj CGPointValue]);
+                    let to_value = id_as_option(to_value).map(|obj| msg![env; obj CGPointValue]);
+                    let by_value = id_as_option(by_value).map(|obj| msg![env; obj CGPointValue]);
+                    let (from_value, by_value) = get_from_and_by_values(
+                        Some(presentation.position),
+                        from_value,
+                        to_value,
+                        by_value,
+                    );
+                    presentation.position = from_value + by_value * interpolation_amount;
+                }
                 "cornerRadius" => {
                     let from_value = id_as_option(from_value).map(|obj| msg![env; obj floatValue]);
                     let to_value = id_as_option(to_value).map(|obj| msg![env; obj floatValue]);
@@ -224,7 +242,7 @@ impl State {
                     );
                     presentation.hidden = (from_value + by_value * interpolation_amount) > 0.5;
                 }
-                "opacity" => {
+                "alpha" | "opacity" => {
                     let from_value = id_as_option(from_value).map(|obj| msg![env; obj floatValue]);
                     let to_value = id_as_option(to_value).map(|obj| msg![env; obj floatValue]);
                     let by_value = id_as_option(by_value).map(|obj| msg![env; obj floatValue]);
@@ -236,18 +254,20 @@ impl State {
                     );
                     presentation.opacity = from_value + by_value * interpolation_amount;
                 }
-                "position" => {
+                "transform" => {
                     let from_value =
-                        id_as_option(from_value).map(|obj| msg![env; obj CGPointValue]);
-                    let to_value = id_as_option(to_value).map(|obj| msg![env; obj CGPointValue]);
-                    let by_value = id_as_option(by_value).map(|obj| msg![env; obj CGPointValue]);
+                        id_as_option(from_value).map(|obj| msg![env; obj CGAffineTransformValue]);
+                    let to_value =
+                        id_as_option(to_value).map(|obj| msg![env; obj CGAffineTransformValue]);
+                    let by_value =
+                        id_as_option(by_value).map(|obj| msg![env; obj CGAffineTransformValue]);
                     let (from_value, by_value) = get_from_and_by_values(
-                        Some(presentation.position),
+                        Some(presentation.affine_transform),
                         from_value,
                         to_value,
                         by_value,
                     );
-                    presentation.position = from_value + by_value * interpolation_amount;
+                    presentation.affine_transform = from_value + by_value * interpolation_amount;
                 }
                 _ => panic!("Attempted to animate on key {}", key_path),
             }

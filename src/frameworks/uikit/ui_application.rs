@@ -22,6 +22,7 @@ pub struct State {
     /// [UIApplication sharedApplication]
     shared_application: Option<id>,
     pub(super) status_bar_hidden: bool,
+    pub(super) ignoring_interaction_events_count: usize,
 }
 
 struct UIApplicationHostObject {
@@ -154,15 +155,15 @@ pub const CLASSES: ClassExports = objc_classes! {
     true
 }
 
-// TODO: ignore touches
 -(())beginIgnoringInteractionEvents {
-    log!("TODO: ignoring beginIgnoringInteractionEvents");
+    env.framework_state.uikit.ui_application.ignoring_interaction_events_count += 1;
 }
 - (bool)isIgnoringInteractionEvents {
-    false
+    env.framework_state.uikit.ui_application.ignoring_interaction_events_count > 0
 }
 -(())endIgnoringInteractionEvents {
-    log!("TODO: ignoring endIgnoringInteractionEvents");
+    env.framework_state.uikit.ui_application.ignoring_interaction_events_count =
+        env.framework_state.uikit.ui_application.ignoring_interaction_events_count.saturating_sub(1);
 }
 
 - (id)keyWindow {

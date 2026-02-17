@@ -6,11 +6,13 @@
 //! `UIScrollView`.
 
 pub mod ui_text_view;
-use crate::frameworks::core_graphics::{CGPoint, CGRect, CGSize};
+use crate::frameworks::core_graphics::{CGFloat, CGPoint, CGRect, CGSize};
+use crate::frameworks::foundation::ns_string::get_static_str;
 use crate::frameworks::foundation::NSInteger;
+use crate::frameworks::uikit::ui_geometry::UIEdgeInsets;
 use crate::objc::{
-    id, impl_HostObject_with_superclass, msg, nil, objc_classes, todo_objc_setter, ClassExports,
-    NSZonePtr, SEL,
+    id, impl_HostObject_with_superclass, msg, msg_super, nil, objc_classes, todo_objc_setter,
+    ClassExports, NSZonePtr, SEL,
 };
 
 type UIScrollViewIndicatorStyle = NSInteger;
@@ -22,6 +24,14 @@ pub struct UIScrollViewHostObject {
     scroll_enabled: bool,
     content_offset: CGPoint,
     content_size: CGSize,
+    content_inset: UIEdgeInsets,
+    scroll_indicator_insets: UIEdgeInsets,
+    bounces: bool,
+    directional_lock_enabled: bool,
+    paging_enabled: bool,
+    shows_horizontal_scroll_indicator: bool,
+    shows_vertical_scroll_indicator: bool,
+    scrolls_to_top: bool,
 }
 impl_HostObject_with_superclass!(UIScrollViewHostObject);
 impl Default for UIScrollViewHostObject {
@@ -35,6 +45,14 @@ impl Default for UIScrollViewHostObject {
                 width: 0.0,
                 height: 0.0,
             },
+            content_inset: UIEdgeInsets::default(),
+            scroll_indicator_insets: UIEdgeInsets::default(),
+            bounces: true,
+            directional_lock_enabled: false,
+            paging_enabled: false,
+            shows_horizontal_scroll_indicator: true,
+            shows_vertical_scroll_indicator: true,
+            scrolls_to_top: true,
         }
     }
 }
@@ -50,6 +68,60 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.alloc_object(this, host_object, &mut env.mem)
 }
 
+- (id)initWithCoder:(id)coder {
+    let this: id = msg_super![env; this initWithCoder:coder];
+
+    let key_ns_string = get_static_str(env, "UIContentSize");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let size: CGSize = msg![env; coder decodeCGSizeForKey:key_ns_string];
+        () = msg![env; this setContentSize:size];
+    }
+
+    let key_ns_string = get_static_str(env, "UIContentOffset");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let offset: CGPoint = msg![env; coder decodeCGPointForKey:key_ns_string];
+        () = msg![env; this setContentOffset:offset];
+    }
+
+    let key_ns_string = get_static_str(env, "UIContentInset");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let inset: UIEdgeInsets = msg![env; coder decodeUIEdgeInsetsForKey:key_ns_string];
+        () = msg![env; this setContentInset:inset];
+    }
+
+    let key_ns_string = get_static_str(env, "UIBounces");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let bounces: bool = msg![env; coder decodeBoolForKey:key_ns_string];
+        () = msg![env; this setBounces:bounces];
+    }
+
+    let key_ns_string = get_static_str(env, "UIScrollEnabled");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let enabled: bool = msg![env; coder decodeBoolForKey:key_ns_string];
+        () = msg![env; this setScrollEnabled:enabled];
+    }
+
+    let key_ns_string = get_static_str(env, "UIPagingEnabled");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let enabled: bool = msg![env; coder decodeBoolForKey:key_ns_string];
+        () = msg![env; this setPagingEnabled:enabled];
+    }
+
+    let key_ns_string = get_static_str(env, "UIShowsHorizontalScrollIndicator");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let shows: bool = msg![env; coder decodeBoolForKey:key_ns_string];
+        () = msg![env; this setShowsHorizontalScrollIndicator:shows];
+    }
+
+    let key_ns_string = get_static_str(env, "UIShowsVerticalScrollIndicator");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let shows: bool = msg![env; coder decodeBoolForKey:key_ns_string];
+        () = msg![env; this setShowsVerticalScrollIndicator:shows];
+    }
+
+    this
+}
+
 - (id)delegate {
     env.objc.borrow::<UIScrollViewHostObject>(this).delegate
 }
@@ -57,11 +129,18 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow_mut::<UIScrollViewHostObject>(this).delegate = delegate;
 }
 
-- (())setDelaysContentTouches:(id)_delay_content_touches{
-    // TODO
+- (bool)delaysContentTouches {
+    true
 }
-- (())setBounces:(id)_bounces {
-    // TODO
+- (())setDelaysContentTouches:(bool)delays {
+    todo_objc_setter!(this, delays);
+}
+
+- (bool)bounces {
+    env.objc.borrow::<UIScrollViewHostObject>(this).bounces
+}
+- (())setBounces:(bool)bounces {
+    env.objc.borrow_mut::<UIScrollViewHostObject>(this).bounces = bounces;
 }
 
 - (bool)scrollEnabled {
@@ -75,6 +154,10 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow::<UIScrollViewHostObject>(this).content_offset
 }
 - (())setContentOffset:(CGPoint)offset {
+    () = msg![env; this setContentOffset:offset animated:false];
+}
+
+- (())setContentOffset:(CGPoint)offset animated:(bool)_animated {
     env.objc.borrow_mut::<UIScrollViewHostObject>(this).content_offset = offset;
     // Bounds origin should be equals to the content offset
     let mut bounds: CGRect = msg![env; this bounds];
@@ -90,8 +173,114 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow_mut::<UIScrollViewHostObject>(this).content_size = size;
 }
 
+- (UIEdgeInsets)contentInset {
+    env.objc.borrow::<UIScrollViewHostObject>(this).content_inset
+}
+- (())setContentInset:(UIEdgeInsets)inset {
+    env.objc.borrow_mut::<UIScrollViewHostObject>(this).content_inset = inset;
+}
+
+- (UIEdgeInsets)scrollIndicatorInsets {
+    env.objc.borrow::<UIScrollViewHostObject>(this).scroll_indicator_insets
+}
+- (())setScrollIndicatorInsets:(UIEdgeInsets)inset {
+    env.objc.borrow_mut::<UIScrollViewHostObject>(this).scroll_indicator_insets = inset;
+}
+
 - (())setIndicatorStyle:(UIScrollViewIndicatorStyle)style {
     todo_objc_setter!(this, style);
+}
+
+- (bool)isDirectionalLockEnabled {
+    env.objc.borrow::<UIScrollViewHostObject>(this).directional_lock_enabled
+}
+- (())setDirectionalLockEnabled:(bool)enabled {
+    env.objc.borrow_mut::<UIScrollViewHostObject>(this).directional_lock_enabled = enabled;
+}
+
+- (bool)showsHorizontalScrollIndicator {
+    env.objc.borrow::<UIScrollViewHostObject>(this).shows_horizontal_scroll_indicator
+}
+- (())setShowsHorizontalScrollIndicator:(bool)shows {
+    env.objc.borrow_mut::<UIScrollViewHostObject>(this).shows_horizontal_scroll_indicator = shows;
+}
+
+- (bool)showsVerticalScrollIndicator {
+    env.objc.borrow::<UIScrollViewHostObject>(this).shows_vertical_scroll_indicator
+}
+- (())setShowsVerticalScrollIndicator:(bool)shows {
+    env.objc.borrow_mut::<UIScrollViewHostObject>(this).shows_vertical_scroll_indicator = shows;
+}
+
+- (bool)isPagingEnabled {
+    env.objc.borrow::<UIScrollViewHostObject>(this).paging_enabled
+}
+- (())setPagingEnabled:(bool)enabled {
+    env.objc.borrow_mut::<UIScrollViewHostObject>(this).paging_enabled = enabled;
+}
+
+- (bool)alwaysBounceVertical {
+    false
+}
+- (())setAlwaysBounceVertical:(bool)enabled {
+    todo_objc_setter!(this, enabled);
+}
+
+- (bool)alwaysBounceHorizontal {
+    false
+}
+- (())setAlwaysBounceHorizontal:(bool)enabled {
+    todo_objc_setter!(this, enabled);
+}
+
+- (bool)canCancelContentTouches {
+    true
+}
+- (())setCanCancelContentTouches:(bool)enabled {
+    todo_objc_setter!(this, enabled);
+}
+
+- (bool)scrollsToTop {
+    env.objc.borrow::<UIScrollViewHostObject>(this).scrolls_to_top
+}
+- (())setScrollsToTop:(bool)enabled {
+    env.objc.borrow_mut::<UIScrollViewHostObject>(this).scrolls_to_top = enabled;
+}
+
+- (bool)bouncesZoom {
+    true
+}
+- (())setBouncesZoom:(bool)enabled {
+    todo_objc_setter!(this, enabled);
+}
+
+- (CGFloat)minimumZoomScale {
+    1.0
+}
+- (())setMinimumZoomScale:(CGFloat)scale {
+    todo_objc_setter!(this, scale);
+}
+
+- (CGFloat)maximumZoomScale {
+    1.0
+}
+- (())setMaximumZoomScale:(CGFloat)scale {
+    todo_objc_setter!(this, scale);
+}
+
+- (CGFloat)zoomScale {
+    1.0
+}
+- (())setZoomScale:(CGFloat)scale {
+    todo_objc_setter!(this, scale);
+}
+
+- (())flashScrollIndicators {
+    log!("TODO: [(UIScrollView*){:?} flashScrollIndicators]", this);
+}
+
+- (())scrollRectToVisible:(CGRect)rect animated:(bool)animated {
+    log!("TODO: [(UIScrollView*){:?} scrollRectToVisible:{:?} animated:{}]", this, rect, animated);
 }
 
 - (())touchesMoved:(id)touches // NSSet* of UITouch*

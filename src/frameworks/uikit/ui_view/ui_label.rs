@@ -31,6 +31,11 @@ pub struct UILabelHostObject {
     text_alignment: UITextAlignment,
     line_break_mode: UILineBreakMode,
     number_of_lines: NSInteger,
+    adjusts_font_size_to_fit_width: bool,
+    baseline_adjustment: NSInteger,
+    /// `UIColor*`
+    shadow_color: id,
+    shadow_offset: CGSize,
 }
 impl_HostObject_with_superclass!(UILabelHostObject);
 impl Default for UILabelHostObject {
@@ -43,6 +48,13 @@ impl Default for UILabelHostObject {
             text_alignment: UITextAlignmentLeft,
             line_break_mode: UILineBreakModeTailTruncation,
             number_of_lines: 1,
+            adjusts_font_size_to_fit_width: false,
+            baseline_adjustment: 0, // UIBaselineAdjustmentAlignBaselines
+            shadow_color: nil,
+            shadow_offset: CGSize {
+                width: 0.0,
+                height: -1.0,
+            },
         }
     }
 }
@@ -71,6 +83,42 @@ pub const CLASSES: ClassExports = objc_classes! {
     let key_ns_string = get_static_str(env, "UITextColor");
     let text_color: id = msg![env; coder decodeObjectForKey:key_ns_string];
     () = msg![env; this setTextColor:text_color];
+
+    let key_ns_string = get_static_str(env, "UIFont");
+    let font: id = msg![env; coder decodeObjectForKey:key_ns_string];
+    if font != nil {
+        () = msg![env; this setFont:font];
+    }
+
+    let key_ns_string = get_static_str(env, "UITextAlignment");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let alignment: i32 = msg![env; coder decodeIntForKey:key_ns_string];
+        () = msg![env; this setTextAlignment:(alignment as UITextAlignment)];
+    }
+
+    let key_ns_string = get_static_str(env, "UILineBreakMode");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let mode: i32 = msg![env; coder decodeIntForKey:key_ns_string];
+        () = msg![env; this setLineBreakMode:(mode as UILineBreakMode)];
+    }
+
+    let key_ns_string = get_static_str(env, "UINumberOfLines");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let lines: i32 = msg![env; coder decodeIntForKey:key_ns_string];
+        () = msg![env; this setNumberOfLines:(lines as NSInteger)];
+    }
+
+    let key_ns_string = get_static_str(env, "UIShadowColor");
+    let shadow_color: id = msg![env; coder decodeObjectForKey:key_ns_string];
+    if shadow_color != nil {
+        () = msg![env; this setShadowColor:shadow_color];
+    }
+
+    let key_ns_string = get_static_str(env, "UIShadowOffset");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let offset: CGSize = msg![env; coder decodeCGSizeForKey:key_ns_string];
+        () = msg![env; this setShadowOffset:offset];
+    }
 
     let key_ns_string = get_static_str(env, "UIBackgroundColor");
     let bg_color: id = msg![env; coder decodeObjectForKey:key_ns_string];
@@ -109,10 +157,15 @@ pub const CLASSES: ClassExports = objc_classes! {
         text_alignment: _,
         line_break_mode: _,
         number_of_lines: _,
+        adjusts_font_size_to_fit_width: _,
+        baseline_adjustment: _,
+        shadow_color,
+        shadow_offset: _,
     } = env.objc.borrow(this);
     release(env, text);
     release(env, font);
     release(env, text_color);
+    release(env, shadow_color);
     msg_super![env; this dealloc]
 }
 
@@ -155,10 +208,18 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 
 - (bool)adjustsFontSizeToFitWidth {
-    false // default value
+    env.objc.borrow::<UILabelHostObject>(this).adjusts_font_size_to_fit_width
 }
 - (())setAdjustsFontSizeToFitWidth:(bool)adjusts {
-    assert!(!adjusts); // TODO
+    env.objc.borrow_mut::<UILabelHostObject>(this).adjusts_font_size_to_fit_width = adjusts;
+    () = msg![env; this setNeedsDisplay];
+}
+
+- (CGFloat)minimumFontSize {
+    0.0 // TODO: store it
+}
+- (())setMinimumFontSize:(CGFloat)size {
+    todo_objc_setter!(this, size);
 }
 
 - (id)textColor {
@@ -195,11 +256,24 @@ pub const CLASSES: ClassExports = objc_classes! {
     msg_super![env; this setBackgroundColor:color]
 }
 
+- (id)shadowColor {
+    env.objc.borrow::<UILabelHostObject>(this).shadow_color
+}
 - (())setShadowColor:(id)color { // UIColor*
-    todo_objc_setter!(this, color);
+    let old_color = std::mem::replace(
+        &mut env.objc.borrow_mut::<UILabelHostObject>(this).shadow_color,
+        color
+    );
+    retain(env, color);
+    release(env, old_color);
+    () = msg![env; this setNeedsDisplay];
+}
+- (CGSize)shadowOffset {
+    env.objc.borrow::<UILabelHostObject>(this).shadow_offset
 }
 - (())setShadowOffset:(CGSize)value {
-    todo_objc_setter!(this, value);
+    env.objc.borrow_mut::<UILabelHostObject>(this).shadow_offset = value;
+    () = msg![env; this setNeedsDisplay];
 }
 
 - (())setOpaque:(bool)_opaque {
@@ -233,6 +307,48 @@ pub const CLASSES: ClassExports = objc_classes! {
     () = msg![env; this setNeedsDisplay];
 }
 
+- (CGSize)sizeThatFits:(CGSize)size {
+    let host_obj = env.objc.borrow::<UILabelHostObject>(this);
+    let text = host_obj.text;
+    let font = host_obj.font;
+    let line_break_mode = host_obj.line_break_mode;
+    let number_of_lines = host_obj.number_of_lines;
+
+    if text == nil {
+        return CGSize { width: 0.0, height: 0.0 };
+    }
+
+    if number_of_lines == 1 {
+        msg![env; text sizeWithFont:font]
+    } else {
+        msg![env; text sizeWithFont:font
+                  constrainedToSize:size
+                      lineBreakMode:line_break_mode]
+    }
+}
+
+- (NSInteger)baselineAdjustment {
+    env.objc.borrow::<UILabelHostObject>(this).baseline_adjustment
+}
+- (())setBaselineAdjustment:(NSInteger)adjustment {
+    env.objc.borrow_mut::<UILabelHostObject>(this).baseline_adjustment = adjustment;
+    () = msg![env; this setNeedsDisplay];
+}
+
+- (bool)isEnabled {
+    true
+}
+- (())setEnabled:(bool)enabled {
+    todo_objc_setter!(this, enabled);
+}
+
+- (bool)isHighlighted {
+    false
+}
+- (())setHighlighted:(bool)highlighted {
+    todo_objc_setter!(this, highlighted);
+}
+
 - (())drawRect:(CGRect)_rect {
     let bounds: CGRect = msg![env; this bounds];
     let context = UIGraphicsGetCurrentContext(env);
@@ -245,10 +361,14 @@ pub const CLASSES: ClassExports = objc_classes! {
         text_alignment,
         line_break_mode,
         number_of_lines,
+        shadow_color,
+        shadow_offset,
+        ..
     } = env.objc.borrow_mut(this);
 
-    let (r, g, b, a) = ui_color::get_rgba(&env.objc, text_color);
-    CGContextSetRGBFillColor(env, context, r, g, b, a);
+    if text == nil {
+        return;
+    }
 
     // TODO: handle line counts other than 0 and 1 properly. 0 = unlimited
     // (note the log message in setNumberOfLines:)
@@ -263,30 +383,59 @@ pub const CLASSES: ClassExports = objc_classes! {
     };
 
     // UILabel always vertically centers text
-    // (TODO: check whether this is actually a UILabel thing, or a property of
-    // UIStringDrawing?)
+    let origin_y = bounds.origin.y + (bounds.size.height - calculated_size.height) / 2.0;
+
     let rect = CGRect {
         origin: CGPoint {
             x: bounds.origin.x,
-            y: bounds.origin.y + (bounds.size.height - calculated_size.height) / 2.0,
+            y: origin_y,
         },
         size: CGSize {
             width: bounds.size.width,
-            // This is necessary for when the calculated size is actually larger
-            // than the bounds.
             height: calculated_size.height,
         },
     };
 
-    let _size: CGSize = if single_line {
-        let x_offset = match text_alignment {
-            UITextAlignmentLeft => 0.0,
-            UITextAlignmentCenter => 0.5,
-            UITextAlignmentRight => 1.0,
-            _ => unimplemented!(),
+    let x_offset_mult = match text_alignment {
+        UITextAlignmentLeft => 0.0,
+        UITextAlignmentCenter => 0.5,
+        UITextAlignmentRight => 1.0,
+        _ => unimplemented!(),
+    };
+
+    if shadow_color != nil {
+        let (r, g, b, a) = ui_color::get_rgba(&env.objc, shadow_color);
+        CGContextSetRGBFillColor(env, context, r, g, b, a);
+
+        let shadow_rect = CGRect {
+            origin: CGPoint {
+                x: rect.origin.x + shadow_offset.width,
+                y: rect.origin.y + shadow_offset.height,
+            },
+            size: rect.size,
         };
+
+        if single_line {
+            let point = CGPoint {
+                x: shadow_rect.origin.x + x_offset_mult * (bounds.size.width - calculated_size.width),
+                y: shadow_rect.origin.y
+            };
+            let _: CGSize = msg![env; text drawAtPoint:point
+                                              withFont:font];
+        } else {
+            let _: CGSize = msg![env; text drawInRect:shadow_rect
+                                             withFont:font
+                                        lineBreakMode:line_break_mode
+                                            alignment:text_alignment];
+        }
+    }
+
+    let (r, g, b, a) = ui_color::get_rgba(&env.objc, text_color);
+    CGContextSetRGBFillColor(env, context, r, g, b, a);
+
+    let _size: CGSize = if single_line {
         let point = CGPoint {
-            x: rect.origin.x + x_offset * (bounds.size.width - calculated_size.width),
+            x: rect.origin.x + x_offset_mult * (bounds.size.width - calculated_size.width),
             y: rect.origin.y
         };
         msg![env; text drawAtPoint:point

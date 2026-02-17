@@ -145,6 +145,9 @@ impl ObjC {
     /// Checks if the provided class has a method in its class chain (that is
     /// to say, objects of the given class respond to a selector).
     pub fn class_has_method(&self, class: Class, sel: SEL) -> bool {
+        if class == nil {
+            return false;
+        }
         let mut class = class;
         loop {
             let &ClassHostObject {
