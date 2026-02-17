@@ -22,6 +22,12 @@ const kCATransitionMoveIn: &str = "moveIn";
 const kCATransitionPush: &str = "push";
 const kCATransitionReveal: &str = "reveal";
 
+pub type CATransitionSubtype = id; // NSString*
+const kCATransitionFromLeft: &str = "fromLeft";
+const kCATransitionFromRight: &str = "fromRight";
+const kCATransitionFromTop: &str = "fromTop";
+const kCATransitionFromBottom: &str = "fromBottom";
+
 pub type CAMediaTimingFillMode = id; // NSString*
 pub const kCAFillModeBackwards: &str = "backwards";
 pub const kCAFillModeBoth: &str = "both";
@@ -45,6 +51,23 @@ pub const CONSTANTS: ConstantExports = &[
     (
         "_kCATransitionReveal",
         HostConstant::NSString(kCATransitionReveal),
+    ),
+    // `CATransitionSubtype` values.
+    (
+        "_kCATransitionFromLeft",
+        HostConstant::NSString(kCATransitionFromLeft),
+    ),
+    (
+        "_kCATransitionFromRight",
+        HostConstant::NSString(kCATransitionFromRight),
+    ),
+    (
+        "_kCATransitionFromTop",
+        HostConstant::NSString(kCATransitionFromTop),
+    ),
+    (
+        "_kCATransitionFromBottom",
+        HostConstant::NSString(kCATransitionFromBottom),
     ),
     // `CAMediaTimingFillMode` values.
     (
@@ -305,15 +328,62 @@ pub const CLASSES: ClassExports = objc_classes! {
 @end
 
 
+struct CATransitionHostObject {
+    superclass: CAAnimationHostObject,
+    type_: &'static str,
+    subtype: &'static str,
+}
+impl_HostObject_with_superclass!(CATransitionHostObject);
+impl Default for CATransitionHostObject {
+    fn default() -> Self {
+        Self {
+            superclass: CAAnimationHostObject {
+                duration: 0.25, // default for transition
+                ..Default::default()
+            },
+            type_: kCATransitionFade,
+            subtype: "",
+        }
+    }
+}
+
 @implementation CATransition : CAAnimation
 
 + (id)allocWithZone:(NSZonePtr)_zone {
-    let host_object = Box::<CABasicAnimationHostObject>::default();
+    let host_object = Box::<CATransitionHostObject>::default();
     env.objc.alloc_object(this, host_object, &mut env.mem)
 }
 
 - (())setType:(CATransitionType)transitionType {
-    todo_objc_setter!(this, to_rust_string(env, transitionType));
+    let type_str = to_rust_string(env, transitionType);
+    log_dbg!("[(CATransition*){:?} setType:{:?}]", this, type_str);
+    let type_str = match &*type_str {
+        kCATransitionFade => kCATransitionFade,
+        kCATransitionMoveIn => kCATransitionMoveIn,
+        kCATransitionPush => kCATransitionPush,
+        kCATransitionReveal => kCATransitionReveal,
+        _ => {
+            log!("Warning: unknown CATransition type \"{}\"", type_str);
+            kCATransitionFade
+        }
+    };
+    env.objc.borrow_mut::<CATransitionHostObject>(this).type_ = type_str;
+}
+
+- (())setSubtype:(CATransitionSubtype)subtype {
+    let subtype_str = to_rust_string(env, subtype);
+    log_dbg!("[(CATransition*){:?} setSubtype:{:?}]", this, subtype_str);
+    let subtype_str = match &*subtype_str {
+        kCATransitionFromLeft => kCATransitionFromLeft,
+        kCATransitionFromRight => kCATransitionFromRight,
+        kCATransitionFromTop => kCATransitionFromTop,
+        kCATransitionFromBottom => kCATransitionFromBottom,
+        _ => {
+             log!("Warning: unknown CATransition subtype \"{}\"", subtype_str);
+             ""
+        }
+    };
+    env.objc.borrow_mut::<CATransitionHostObject>(this).subtype = subtype_str;
 }
 
 @end

@@ -143,6 +143,11 @@ impl State {
             // Assuming all animations here are CABasicAnimation
             // TODO: Handle other types of animations
 
+            let basic_animation_class: id = msg_class![env; CABasicAnimation class];
+            if !msg![env; animation isKindOfClass:basic_animation_class] {
+                continue;
+            }
+
             let from_value: id = msg![env; animation fromValue];
             let to_value: id = msg![env; animation toValue];
             let by_value: id = msg![env; animation byValue];
