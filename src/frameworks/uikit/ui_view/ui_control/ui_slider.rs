@@ -16,13 +16,19 @@ pub const CLASSES: ClassExports = objc_classes! {
 
 - (id)initWithFrame:(CGRect)frame {
     log!("[(UISlider*){:?} initWithFrame:{:?}] TODO: Implement UISlider. The control won't be rendered.", this, frame);
-    msg_super![env; this initWithFrame:frame]
+    let this: id = msg_super![env; this initWithFrame:frame];
+    let color: id = msg_class![env; UIColor lightGrayColor];
+    () = msg![env; this setBackgroundColor:color];
+    this
 }
 
 // NSCoding implementation
 - (id)initWithCoder:(id)coder {
     log!("[(UISlider*){:?} initWithCoder:{:?}] TODO: Implement UISlider. The control won't be rendered.", this, coder);
-    msg_super![env; this initWithCoder:coder]
+    let this: id = msg_super![env; this initWithCoder:coder];
+    let color: id = msg_class![env; UIColor lightGrayColor];
+    () = msg![env; this setBackgroundColor:color];
+    this
 }
 
 - (())setMinimumValueImage:(id)img { // UIImage *

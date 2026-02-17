@@ -17,13 +17,19 @@ pub const CLASSES: ClassExports = objc_classes! {
 
 - (id)initWithFrame:(CGRect)frame {
     log!("[(UISegmentedControl*){:?} initWithFrame:{:?}] TODO: Implement UISegmentedControl. The control won't be rendered.", this, frame);
-    msg_super![env; this initWithFrame:frame]
+    let this: id = msg_super![env; this initWithFrame:frame];
+    let color: id = msg_class![env; UIColor lightGrayColor];
+    () = msg![env; this setBackgroundColor:color];
+    this
 }
 
 // NSCoding implementation
 - (id)initWithCoder:(id)coder {
     log!("[(UISegmentedControl*){:?} initWithCoder:{:?}] TODO: Implement UISegmentedControl. The control won't be rendered.", this, coder);
-    msg_super![env; this initWithCoder:coder]
+    let this: id = msg_super![env; this initWithCoder:coder];
+    let color: id = msg_class![env; UIColor lightGrayColor];
+    () = msg![env; this setBackgroundColor:color];
+    this
 }
 
 - (NSInteger)numberOfSegments {

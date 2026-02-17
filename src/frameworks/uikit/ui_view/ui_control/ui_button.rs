@@ -37,6 +37,8 @@ struct UIButtonContentHostObject {
     title: id,
     /// `UIColor*`
     title_color: id,
+    /// `UIImage*`
+    image: id,
 }
 impl HostObject for UIButtonContentHostObject {}
 
@@ -216,6 +218,11 @@ pub const CLASSES: ClassExports = objc_classes! {
         () = msg![env; this setTitleColor:title_color forState:UIControlStateNormal];
     }
 
+    let image: id = msg![env; button_content image];
+    if image != nil {
+        () = msg![env; this setImage:image forState:UIControlStateNormal];
+    }
+
     // TODO: decode other properties
     update(env, this);
 
@@ -256,14 +263,21 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 
 - (())layoutSubviews {
-    let label = env.objc.borrow_mut::<UIButtonHostObject>(this).title_label;
-    let background_image_view = env.objc.borrow_mut::<UIButtonHostObject>(this).background_image_view;
+    let &UIButtonHostObject {
+        title_label: label,
+        image_view,
+        background_image_view,
+        ..
+    } = env.objc.borrow(this);
     let bounds: CGRect = msg![env; this bounds];
 
     () = msg![env; background_image_view setFrame:bounds];
-    () = msg![env; label setFrame:bounds];
-    // TODO: layout for image
 
+    // Simple implementation: title takes the whole bounds, image takes the
+    // whole bounds (they are expected to be transparent where appropriate).
+    // TODO: support proper button layout logic with edge insets etc.
+    () = msg![env; label setFrame:bounds];
+    () = msg![env; image_view setFrame:bounds];
 }
 
 - (UIButtonType)buttonType {
@@ -458,13 +472,19 @@ pub const CLASSES: ClassExports = objc_classes! {
     let title_color: id = msg![env; coder decodeObjectForKey:title_color_key];
     log_dbg!("UIButtonContent: UITitleColor -> {:?}", title_color);
 
+    let image_key = get_static_str(env, "UIImage");
+    let image: id = msg![env; coder decodeObjectForKey:image_key];
+    log_dbg!("UIButtonContent: UIImage -> {:?}", image);
+
     // TODO: decode other properties
 
     retain(env, title);
     retain(env, title_color);
+    retain(env, image);
     let host_obj = env.objc.borrow_mut::<UIButtonContentHostObject>(this);
     host_obj.title = title;
     host_obj.title_color = title_color;
+    host_obj.image = image;
 
     this
 }
@@ -475,12 +495,16 @@ pub const CLASSES: ClassExports = objc_classes! {
 - (id)titleColor {
     env.objc.borrow::<UIButtonContentHostObject>(this).title_color
 }
+- (id)image {
+    env.objc.borrow::<UIButtonContentHostObject>(this).image
+}
 
 - (id)description {
     let title = env.objc.borrow::<UIButtonContentHostObject>(this).title;
     let title_color = env.objc.borrow::<UIButtonContentHostObject>(this).title_color;
+    let image = env.objc.borrow::<UIButtonContentHostObject>(this).image;
     let desc_str = format!(
-        "UIButtonContent({this:?}, title {title:?}, title_color {title_color:?})"
+        "UIButtonContent({this:?}, title {title:?}, title_color {title_color:?}, image {image:?})"
     );
     let desc = from_rust_string(env, desc_str);
     autorelease(env, desc)
@@ -489,10 +513,12 @@ pub const CLASSES: ClassExports = objc_classes! {
 - (())dealloc {
     let &UIButtonContentHostObject {
         title,
-        title_color
+        title_color,
+        image
     } = env.objc.borrow(this);
     release(env, title);
     release(env, title_color);
+    release(env, image);
 
     env.objc.dealloc_object(this, &mut env.mem)
 }
