@@ -249,6 +249,21 @@ impl State {
                     );
                     presentation.position = from_value + by_value * interpolation_amount;
                 }
+                "transform" => {
+                    let from_value =
+                        id_as_option(from_value).map(|obj| msg![env; obj CGAffineTransformValue]);
+                    let to_value =
+                        id_as_option(to_value).map(|obj| msg![env; obj CGAffineTransformValue]);
+                    let by_value =
+                        id_as_option(by_value).map(|obj| msg![env; obj CGAffineTransformValue]);
+                    let (from_value, by_value) = get_from_and_by_values(
+                        Some(presentation.affine_transform),
+                        from_value,
+                        to_value,
+                        by_value,
+                    );
+                    presentation.affine_transform = from_value + by_value * interpolation_amount;
+                }
                 _ => panic!("Attempted to animate on key {}", key_path),
             }
         }

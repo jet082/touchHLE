@@ -66,6 +66,18 @@ pub const CLASSES: ClassExports = objc_classes! {
 
     () = msg![env; this setImage:image];
 
+    let key_ns_string = get_static_str(env, "UIAnimationImages");
+    let animation_images: id = msg![env; coder decodeObjectForKey:key_ns_string];
+    if animation_images != nil {
+        () = msg![env; this setAnimationImages:animation_images];
+    }
+
+    let key_ns_string = get_static_str(env, "UIAnimationDuration");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let duration: f64 = msg![env; coder decodeDoubleForKey:key_ns_string];
+        () = msg![env; this setAnimationDuration:duration];
+    }
+
     this
 }
 

@@ -335,6 +335,31 @@ pub const CLASSES: ClassExports = objc_classes! {
     let key_ns_string = get_static_str(env, "UIBackgroundColor");
     let bg_color: id = msg![env; coder decodeObjectForKey:key_ns_string];
 
+    let key_ns_string = get_static_str(env, "UIAlpha");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let alpha: f32 = msg![env; coder decodeFloatForKey:key_ns_string];
+        () = msg![env; this setAlpha:(alpha as CGFloat)];
+    }
+
+    let key_ns_string = get_static_str(env, "UITransform");
+    let transform_string: id = msg![env; coder decodeObjectForKey:key_ns_string];
+    if transform_string != nil {
+        let transform = super::ui_geometry::CGAffineTransformFromString(env, transform_string);
+        () = msg![env; this setTransform:transform];
+    }
+
+    let key_ns_string = get_static_str(env, "UIContentMode");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let content_mode: i32 = msg![env; coder decodeIntForKey:key_ns_string];
+        () = msg![env; this setContentMode:(content_mode as NSInteger)];
+    }
+
+    let key_ns_string = get_static_str(env, "UIUserInteractionDisabled");
+    if msg![env; coder containsValueForKey:key_ns_string] {
+        let disabled: bool = msg![env; coder decodeBoolForKey:key_ns_string];
+        () = msg![env; this setUserInteractionEnabled:(!disabled)];
+    }
+
     let key_ns_string = get_static_str(env, "UIBackgroundImage");
     let bg_image: id = msg![env; coder decodeObjectForKey:key_ns_string];
     if bg_image != nil {

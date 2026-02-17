@@ -11,6 +11,7 @@ use crate::frameworks::core_foundation::cf_number::{
     kCFNumberCharType, kCFNumberFloat32Type, kCFNumberFloatType, kCFNumberIntType,
     kCFNumberSInt16Type, kCFNumberSInt32Type, kCFNumberSInt8Type, kCFNumberShortType, CFNumberType,
 };
+use crate::frameworks::core_graphics::cg_affine_transform::CGAffineTransform;
 use crate::frameworks::core_graphics::{CGPoint, CGRect, CGSize};
 use crate::frameworks::foundation::NSInteger;
 use crate::mem::{ConstVoidPtr, MutVoidPtr};
@@ -26,6 +27,7 @@ pub(super) enum NSValueHostObject {
     CGPoint(CGPoint),
     CGSize(CGSize),
     CGRect(CGRect),
+    CGAffineTransform(CGAffineTransform),
 }
 impl HostObject for NSValueHostObject {}
 
@@ -124,10 +126,24 @@ pub const CLASSES: ClassExports = objc_classes! {
     autorelease(env, new)
 }
 
++ (id)valueWithCGAffineTransform:(CGAffineTransform)value {
+    let host_object = Box::new(NSValueHostObject::CGAffineTransform(value));
+    let new = env.objc.alloc_object(this, host_object, &mut env.mem);
+    autorelease(env, new)
+}
+
 - (CGPoint)CGPointValue {
     let host_object = env.objc.borrow::<NSValueHostObject>(this);
     match host_object {
         NSValueHostObject::CGPoint(cg_point) => *cg_point,
+        _ => unimplemented!()
+    }
+}
+
+- (CGAffineTransform)CGAffineTransformValue {
+    let host_object = env.objc.borrow::<NSValueHostObject>(this);
+    match host_object {
+        NSValueHostObject::CGAffineTransform(transform) => *transform,
         _ => unimplemented!()
     }
 }

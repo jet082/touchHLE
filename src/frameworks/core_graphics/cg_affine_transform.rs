@@ -5,6 +5,8 @@
  */
 //! `CGAffineTransform.h`
 
+use std::ops::{Add, Mul, Sub};
+
 use super::{CGFloat, CGPoint, CGRect, CGSize};
 use crate::abi::{impl_GuestRet_for_large_struct, GuestArg};
 use crate::dyld::{export_c_func, ConstantExports, FunctionExports, HostConstant};
@@ -27,6 +29,40 @@ pub struct CGAffineTransform {
     pub ty: CGFloat,
 }
 unsafe impl SafeRead for CGAffineTransform {}
+
+impl std::fmt::Display for CGAffineTransform {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "[{}, {}, {}, {}, {}, {}]",
+            self.a, self.b, self.c, self.d, self.tx, self.ty
+        )
+    }
+}
+
+impl std::str::FromStr for CGAffineTransform {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = s.trim();
+        if !s.starts_with('[') || !s.ends_with(']') {
+            return Err(());
+        }
+        let parts: Vec<&str> = s[1..s.len() - 1].split(',').map(|p| p.trim()).collect();
+        if parts.len() != 6 {
+            return Err(());
+        }
+        Ok(CGAffineTransform {
+            a: parts[0].parse().map_err(|_| ())?,
+            b: parts[1].parse().map_err(|_| ())?,
+            c: parts[2].parse().map_err(|_| ())?,
+            d: parts[3].parse().map_err(|_| ())?,
+            tx: parts[4].parse().map_err(|_| ())?,
+            ty: parts[5].parse().map_err(|_| ())?,
+        })
+    }
+}
+
 impl GuestArg for CGAffineTransform {
     const REG_COUNT: usize = 6;
 
@@ -65,6 +101,51 @@ impl TryFrom<Matrix<3>> for CGAffineTransform {
             Ok(affine_transform_from_matrix_unchecked(value))
         } else {
             Err(())
+        }
+    }
+}
+
+// Implemented to aid animation code.
+// These are the operations needed for the interpolation.
+impl Mul<f32> for CGAffineTransform {
+    type Output = CGAffineTransform;
+
+    fn mul(self, rhs: f32) -> Self::Output {
+        CGAffineTransform {
+            a: self.a * rhs,
+            b: self.b * rhs,
+            c: self.c * rhs,
+            d: self.d * rhs,
+            tx: self.tx * rhs,
+            ty: self.ty * rhs,
+        }
+    }
+}
+impl Add<CGAffineTransform> for CGAffineTransform {
+    type Output = CGAffineTransform;
+
+    fn add(self, rhs: CGAffineTransform) -> Self::Output {
+        CGAffineTransform {
+            a: self.a + rhs.a,
+            b: self.b + rhs.b,
+            c: self.c + rhs.c,
+            d: self.d + rhs.d,
+            tx: self.tx + rhs.tx,
+            ty: self.ty + rhs.ty,
+        }
+    }
+}
+impl Sub<CGAffineTransform> for CGAffineTransform {
+    type Output = CGAffineTransform;
+
+    fn sub(self, rhs: CGAffineTransform) -> Self::Output {
+        CGAffineTransform {
+            a: self.a - rhs.a,
+            b: self.b - rhs.b,
+            c: self.c - rhs.c,
+            d: self.d - rhs.d,
+            tx: self.tx - rhs.tx,
+            ty: self.ty - rhs.ty,
         }
     }
 }

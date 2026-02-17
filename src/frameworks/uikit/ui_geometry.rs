@@ -4,6 +4,7 @@
 
 use crate::abi::{impl_GuestRet_for_large_struct, GuestArg};
 use crate::dyld::{export_c_func, FunctionExports};
+use crate::frameworks::core_graphics::cg_affine_transform::CGAffineTransform;
 use crate::frameworks::core_graphics::{CGFloat, CGPoint, CGRect, CGSize};
 use crate::frameworks::foundation::ns_string;
 use crate::mem::SafeRead;
@@ -41,6 +42,18 @@ pub fn NSStringFromCGSize(env: &mut Environment, size: CGSize) -> id {
 }
 pub fn NSStringFromCGRect(env: &mut Environment, rect: CGRect) -> id {
     let s = ns_string::from_rust_string(env, rect.to_string());
+    autorelease(env, s)
+}
+
+pub fn CGAffineTransformFromString(env: &mut Environment, string: id) -> CGAffineTransform {
+    // TODO: avoid copy
+    ns_string::to_rust_string(env, string)
+        .parse()
+        .unwrap_or(crate::frameworks::core_graphics::cg_affine_transform::CGAffineTransformIdentity)
+}
+
+pub fn NSStringFromCGAffineTransform(env: &mut Environment, transform: CGAffineTransform) -> id {
+    let s = ns_string::from_rust_string(env, transform.to_string());
     autorelease(env, s)
 }
 
@@ -101,6 +114,8 @@ pub const FUNCTIONS: FunctionExports = &[
     export_c_func!(NSStringFromCGPoint(_)),
     export_c_func!(NSStringFromCGSize(_)),
     export_c_func!(NSStringFromCGRect(_)),
+    export_c_func!(CGAffineTransformFromString(_)),
+    export_c_func!(NSStringFromCGAffineTransform(_)),
     export_c_func!(UIEdgeInsetsFromString(_)),
     export_c_func!(NSStringFromUIEdgeInsets(_)),
 ];
