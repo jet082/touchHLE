@@ -26,8 +26,8 @@ use crate::frameworks::foundation::ns_string::get_static_str;
 use crate::frameworks::foundation::{ns_array, NSInteger, NSTimeInterval, NSUInteger};
 use crate::mem::MutVoidPtr;
 use crate::objc::{
-    autorelease, id, msg, msg_class, msg_send, nil, objc_classes, release, retain, todo_objc_setter,
-    Class, ClassExports, HostObject, NSZonePtr, ObjC, SEL,
+    autorelease, id, msg, msg_class, msg_send, nil, objc_classes, release, retain,
+    todo_objc_setter, Class, ClassExports, HostObject, NSZonePtr, ObjC, SEL,
 };
 use crate::Environment;
 
@@ -276,8 +276,8 @@ pub const CLASSES: ClassExports = objc_classes! {
 + (())setAnimationTransition:(NSInteger)transition forView:(id)view cache:(bool)_cache {
     log!("[(UIView *)setAnimationTransition:{} forView:{:?} cache:{}]", transition, view, _cache);
     // This is often used for page flips, etc.
-    // We can't easily implement it correctly without more complex Core Animation support,
-    // but we can at least log it properly.
+    // We can't easily implement it correctly without more complex Core
+    // Animation support, but we can at least log it properly.
 }
 
 + (bool)areAnimationsEnabled {

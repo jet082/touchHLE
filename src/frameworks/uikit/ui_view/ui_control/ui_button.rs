@@ -296,6 +296,9 @@ pub const CLASSES: ClassExports = objc_classes! {
 - (())setShowsTouchWhenHighlighted:(bool)shows {
     todo_objc_setter!(this, shows);
 }
+- (())cancelTrackingWithEvent:(id)event {
+    () = msg_super![env; this cancelTrackingWithEvent:event];
+}
 - (())setFont:(id)font { // UIFont*
     let label = env.objc.borrow_mut::<UIButtonHostObject>(this).title_label;
     () = msg![env; label setFont:font];

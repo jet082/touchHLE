@@ -157,10 +157,17 @@ fn convert_line_break_mode(ui_mode: UILineBreakMode) -> WrapMode {
     match ui_mode {
         UILineBreakModeWordWrap => WrapMode::Word,
         UILineBreakModeCharacterWrap => WrapMode::Char,
-        // TODO: support this properly; fake support is so that UILabel works,
-        // which has this as its default line break mode
+        UILineBreakModeClip => WrapMode::Char,
+        UILineBreakModeHeadTruncation => WrapMode::Word,
         UILineBreakModeTailTruncation => WrapMode::Word,
-        _ => unimplemented!("TODO: line break mode {}", ui_mode),
+        UILineBreakModeMiddleTruncation => WrapMode::Word,
+        _ => {
+            log!(
+                "Warning: unknown UILineBreakMode {}, defaulting to Word",
+                ui_mode
+            );
+            WrapMode::Word
+        }
     }
 }
 
