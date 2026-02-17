@@ -1716,9 +1716,18 @@ pub fn from_u16_vec(env: &mut Environment, from: Vec<u16>) -> id {
 ///
 /// TODO: Try to avoid converting from UTF-16 in more cases.
 pub fn to_rust_string(env: &mut Environment, string: id) -> Cow<'static, str> {
+    if string == nil {
+        return Cow::Borrowed("");
+    }
     // TODO: handle foreign subclasses of NSString
-    env.objc
-        .borrow_mut::<StringHostObject>(string)
+    let Some(host_object) = env.objc.get_host_object(string) else {
+        log!("Warning: to_rust_string called with unknown object {:?}", string);
+        return Cow::Borrowed("");
+    };
+    host_object
+        .as_any()
+        .downcast_ref::<StringHostObject>()
+        .expect("to_rust_string: object is not a NSString")
         .to_utf8()
         .unwrap()
 }
