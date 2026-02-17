@@ -6,7 +6,9 @@
 //! `UISlider`.
 
 use crate::frameworks::core_graphics::CGRect;
-use crate::objc::{id, msg_super, objc_classes, todo_objc_setter, ClassExports};
+use crate::objc::{
+    id, msg, msg_class, msg_super, objc_classes, todo_objc_setter, ClassExports,
+};
 
 pub const CLASSES: ClassExports = objc_classes! {
 
