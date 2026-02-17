@@ -129,6 +129,25 @@ struct CABasicAnimationHostObject {
 }
 impl_HostObject_with_superclass!(CABasicAnimationHostObject);
 
+struct CATransitionHostObject {
+    superclass: CAAnimationHostObject,
+    type_: &'static str,
+    subtype: &'static str,
+}
+impl_HostObject_with_superclass!(CATransitionHostObject);
+impl Default for CATransitionHostObject {
+    fn default() -> Self {
+        Self {
+            superclass: CAAnimationHostObject {
+                duration: 0.25, // default for transition
+                ..Default::default()
+            },
+            type_: kCATransitionFade,
+            subtype: "",
+        }
+    }
+}
+
 pub const CLASSES: ClassExports = objc_classes! {
 
 (env, this, _cmd);
@@ -327,25 +346,6 @@ pub const CLASSES: ClassExports = objc_classes! {
 
 @end
 
-
-struct CATransitionHostObject {
-    superclass: CAAnimationHostObject,
-    type_: &'static str,
-    subtype: &'static str,
-}
-impl_HostObject_with_superclass!(CATransitionHostObject);
-impl Default for CATransitionHostObject {
-    fn default() -> Self {
-        Self {
-            superclass: CAAnimationHostObject {
-                duration: 0.25, // default for transition
-                ..Default::default()
-            },
-            type_: kCATransitionFade,
-            subtype: "",
-        }
-    }
-}
 
 @implementation CATransition : CAAnimation
 
