@@ -103,24 +103,6 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.alloc_object(this, Box::new(host_object), &mut env.mem)
 }
 
-- (id)initWithCoder:(id)coder {
-    let name_key = get_static_str(env, "UIFontName");
-    let name: id = msg![env; coder decodeObjectForKey:name_key];
-
-    let size_key = get_static_str(env, "UIFontSize");
-    let size: CGFloat = msg![env; coder decodeFloatForKey:size_key];
-
-    let host_object = env.objc.borrow_mut::<UIFontHostObject>(this);
-    host_object.size = if size > 0.0 { size } else { 17.0 };
-
-    if name != nil {
-        let name_str = to_rust_string(env, name).to_string();
-        host_object.kind = get_equivalent_font(&name_str).unwrap_or(FontKind::SansRegular);
-    }
-
-    this
-}
-
 + (id)systemFontOfSize:(CGFloat)size {
     let host_object = UIFontHostObject {
         size,
@@ -157,6 +139,24 @@ pub const CLASSES: ClassExports = objc_classes! {
     };
     let new = env.objc.alloc_object(this, Box::new(host_object), &mut env.mem);
     autorelease(env, new)
+}
+
+- (id)initWithCoder:(id)coder {
+    let name_key = get_static_str(env, "UIFontName");
+    let name: id = msg![env; coder decodeObjectForKey:name_key];
+
+    let size_key = get_static_str(env, "UIFontSize");
+    let size: CGFloat = msg![env; coder decodeFloatForKey:size_key];
+
+    let host_object = env.objc.borrow_mut::<UIFontHostObject>(this);
+    host_object.size = if size > 0.0 { size } else { 17.0 };
+
+    if name != nil {
+        let name_str = to_rust_string(env, name).to_string();
+        host_object.kind = get_equivalent_font(&name_str).unwrap_or(FontKind::SansRegular);
+    }
+
+    this
 }
 
 - (CGFloat)ascender {
