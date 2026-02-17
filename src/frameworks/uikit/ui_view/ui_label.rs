@@ -31,6 +31,11 @@ pub struct UILabelHostObject {
     text_alignment: UITextAlignment,
     line_break_mode: UILineBreakMode,
     number_of_lines: NSInteger,
+    adjusts_font_size_to_fit_width: bool,
+    baseline_adjustment: NSInteger,
+    /// `UIColor*`
+    shadow_color: id,
+    shadow_offset: CGSize,
 }
 impl_HostObject_with_superclass!(UILabelHostObject);
 impl Default for UILabelHostObject {
@@ -43,6 +48,13 @@ impl Default for UILabelHostObject {
             text_alignment: UITextAlignmentLeft,
             line_break_mode: UILineBreakModeTailTruncation,
             number_of_lines: 1,
+            adjusts_font_size_to_fit_width: false,
+            baseline_adjustment: 0, // UIBaselineAdjustmentAlignBaselines
+            shadow_color: nil,
+            shadow_offset: CGSize {
+                width: 0.0,
+                height: -1.0,
+            },
         }
     }
 }
@@ -109,10 +121,15 @@ pub const CLASSES: ClassExports = objc_classes! {
         text_alignment: _,
         line_break_mode: _,
         number_of_lines: _,
+        adjusts_font_size_to_fit_width: _,
+        baseline_adjustment: _,
+        shadow_color,
+        shadow_offset: _,
     } = env.objc.borrow(this);
     release(env, text);
     release(env, font);
     release(env, text_color);
+    release(env, shadow_color);
     msg_super![env; this dealloc]
 }
 
@@ -155,14 +172,15 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 
 - (bool)adjustsFontSizeToFitWidth {
-    false // default value
+    env.objc.borrow::<UILabelHostObject>(this).adjusts_font_size_to_fit_width
 }
 - (())setAdjustsFontSizeToFitWidth:(bool)adjusts {
-    todo_objc_setter!(this, adjusts);
+    env.objc.borrow_mut::<UILabelHostObject>(this).adjusts_font_size_to_fit_width = adjusts;
+    () = msg![env; this setNeedsDisplay];
 }
 
 - (CGFloat)minimumFontSize {
-    0.0
+    0.0 // TODO: store it
 }
 - (())setMinimumFontSize:(CGFloat)size {
     todo_objc_setter!(this, size);
@@ -202,11 +220,24 @@ pub const CLASSES: ClassExports = objc_classes! {
     msg_super![env; this setBackgroundColor:color]
 }
 
+- (id)shadowColor {
+    env.objc.borrow::<UILabelHostObject>(this).shadow_color
+}
 - (())setShadowColor:(id)color { // UIColor*
-    todo_objc_setter!(this, color);
+    let old_color = std::mem::replace(
+        &mut env.objc.borrow_mut::<UILabelHostObject>(this).shadow_color,
+        color
+    );
+    retain(env, color);
+    release(env, old_color);
+    () = msg![env; this setNeedsDisplay];
+}
+- (CGSize)shadowOffset {
+    env.objc.borrow::<UILabelHostObject>(this).shadow_offset
 }
 - (())setShadowOffset:(CGSize)value {
-    todo_objc_setter!(this, value);
+    env.objc.borrow_mut::<UILabelHostObject>(this).shadow_offset = value;
+    () = msg![env; this setNeedsDisplay];
 }
 
 - (())setOpaque:(bool)_opaque {
@@ -261,10 +292,11 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 
 - (NSInteger)baselineAdjustment {
-    0 // UIBaselineAdjustmentAlignBaselines
+    env.objc.borrow::<UILabelHostObject>(this).baseline_adjustment
 }
 - (())setBaselineAdjustment:(NSInteger)adjustment {
-    todo_objc_setter!(this, adjustment);
+    env.objc.borrow_mut::<UILabelHostObject>(this).baseline_adjustment = adjustment;
+    () = msg![env; this setNeedsDisplay];
 }
 
 - (bool)isEnabled {
@@ -293,10 +325,14 @@ pub const CLASSES: ClassExports = objc_classes! {
         text_alignment,
         line_break_mode,
         number_of_lines,
+        shadow_color,
+        shadow_offset,
+        ..
     } = env.objc.borrow_mut(this);
 
-    let (r, g, b, a) = ui_color::get_rgba(&env.objc, text_color);
-    CGContextSetRGBFillColor(env, context, r, g, b, a);
+    if text == nil {
+        return;
+    }
 
     // TODO: handle line counts other than 0 and 1 properly. 0 = unlimited
     // (note the log message in setNumberOfLines:)
@@ -311,30 +347,59 @@ pub const CLASSES: ClassExports = objc_classes! {
     };
 
     // UILabel always vertically centers text
-    // (TODO: check whether this is actually a UILabel thing, or a property of
-    // UIStringDrawing?)
+    let origin_y = bounds.origin.y + (bounds.size.height - calculated_size.height) / 2.0;
+
     let rect = CGRect {
         origin: CGPoint {
             x: bounds.origin.x,
-            y: bounds.origin.y + (bounds.size.height - calculated_size.height) / 2.0,
+            y: origin_y,
         },
         size: CGSize {
             width: bounds.size.width,
-            // This is necessary for when the calculated size is actually larger
-            // than the bounds.
             height: calculated_size.height,
         },
     };
 
-    let _size: CGSize = if single_line {
-        let x_offset = match text_alignment {
-            UITextAlignmentLeft => 0.0,
-            UITextAlignmentCenter => 0.5,
-            UITextAlignmentRight => 1.0,
-            _ => unimplemented!(),
+    let x_offset_mult = match text_alignment {
+        UITextAlignmentLeft => 0.0,
+        UITextAlignmentCenter => 0.5,
+        UITextAlignmentRight => 1.0,
+        _ => unimplemented!(),
+    };
+
+    if shadow_color != nil {
+        let (r, g, b, a) = ui_color::get_rgba(&env.objc, shadow_color);
+        CGContextSetRGBFillColor(env, context, r, g, b, a);
+
+        let shadow_rect = CGRect {
+            origin: CGPoint {
+                x: rect.origin.x + shadow_offset.width,
+                y: rect.origin.y + shadow_offset.height,
+            },
+            size: rect.size,
         };
+
+        if single_line {
+            let point = CGPoint {
+                x: shadow_rect.origin.x + x_offset_mult * (bounds.size.width - calculated_size.width),
+                y: shadow_rect.origin.y
+            };
+            msg![env; text drawAtPoint:point
+                              withFont:font];
+        } else {
+            msg![env; text drawInRect:shadow_rect
+                             withFont:font
+                        lineBreakMode:line_break_mode
+                            alignment:text_alignment];
+        }
+    }
+
+    let (r, g, b, a) = ui_color::get_rgba(&env.objc, text_color);
+    CGContextSetRGBFillColor(env, context, r, g, b, a);
+
+    let _size: CGSize = if single_line {
         let point = CGPoint {
-            x: rect.origin.x + x_offset * (bounds.size.width - calculated_size.width),
+            x: rect.origin.x + x_offset_mult * (bounds.size.width - calculated_size.width),
             y: rect.origin.y
         };
         msg![env; text drawAtPoint:point

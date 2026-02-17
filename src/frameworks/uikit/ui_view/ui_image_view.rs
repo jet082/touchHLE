@@ -19,6 +19,10 @@ struct UIImageViewHostObject {
     superclass: super::UIViewHostObject,
     /// `UIImage*`
     image: id,
+    /// `NSArray<UIImage *>*`
+    animation_images: id,
+    animation_duration: NSTimeInterval,
+    is_animating: bool,
 }
 impl_HostObject_with_superclass!(UIImageViewHostObject);
 
@@ -45,8 +49,11 @@ pub const CLASSES: ClassExports = objc_classes! {
     let &UIImageViewHostObject {
         superclass: _,
         image,
+        animation_images,
+        ..
     } = env.objc.borrow(this);
     release(env, image);
+    release(env, animation_images);
     msg_super![env; this dealloc]
 }
 
@@ -91,28 +98,48 @@ pub const CLASSES: ClassExports = objc_classes! {
     () = msg![env; layer setContents:cg_image];
 }
 
+- (id)animationImages {
+    env.objc.borrow::<UIImageViewHostObject>(this).animation_images
+}
 - (())setAnimationImages:(id)images { // NSArray<UIImage *>*
-    todo_objc_setter!(this, images);
-    // TODO: Use all images in the array instead of just the first one
-    if images != nil {
+    let old_images = std::mem::replace(
+        &mut env.objc.borrow_mut::<UIImageViewHostObject>(this).animation_images,
+        images
+    );
+    retain(env, images);
+    release(env, old_images);
+
+    // If we're not currently showing a static image, show the first frame.
+    let current_image = env.objc.borrow::<UIImageViewHostObject>(this).image;
+    if current_image == nil && images != nil {
         let count: NSUInteger = msg![env; images count];
         if count > 0 {
             let first_image: id = msg![env; images objectAtIndex:0u32];
             () = msg![env; this setImage:first_image];
+            // setImage just updated host_obj.image, but we want it to stay nil
+            // if we're just showing the first frame of an animation.
+            env.objc.borrow_mut::<UIImageViewHostObject>(this).image = nil;
         }
     }
 }
 
-- (())setAnimationDuration:(NSTimeInterval)duration { // NSArray<UIImage *>*
-    todo_objc_setter!(this, duration);
+- (NSTimeInterval)animationDuration {
+    env.objc.borrow::<UIImageViewHostObject>(this).animation_duration
+}
+- (())setAnimationDuration:(NSTimeInterval)duration {
+    env.objc.borrow_mut::<UIImageViewHostObject>(this).animation_duration = duration;
 }
 
+- (bool)isAnimating {
+    env.objc.borrow::<UIImageViewHostObject>(this).is_animating
+}
 - (())startAnimating {
-    log!("TODO: [(UIImageView*) {:?} startAnimating]", this);
+    env.objc.borrow_mut::<UIImageViewHostObject>(this).is_animating = true;
+    log!("TODO: [(UIImageView*) {:?} startAnimating] (not yet fully implemented)", this);
 }
 
 - (())stopAnimating {
-    log!("TODO: [(UIImageView*) {:?} stopAnimating]", this);
+    env.objc.borrow_mut::<UIImageViewHostObject>(this).is_animating = false;
 }
 
 @end

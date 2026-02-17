@@ -57,6 +57,8 @@ pub struct UIButtonHostObject {
     images_for_states: HashMap<UIControlState, id>,
     /// Values are `UIImage*`
     background_images_for_states: HashMap<UIControlState, id>,
+    adjusts_image_when_highlighted: bool,
+    adjusts_image_when_disabled: bool,
 }
 impl_HostObject_with_superclass!(UIButtonHostObject);
 impl Default for UIButtonHostObject {
@@ -71,6 +73,8 @@ impl Default for UIButtonHostObject {
             title_colors_for_states: HashMap::new(),
             images_for_states: HashMap::new(),
             background_images_for_states: HashMap::new(),
+            adjusts_image_when_highlighted: true,
+            adjusts_image_when_disabled: true,
         }
     }
 }
@@ -287,11 +291,17 @@ pub const CLASSES: ClassExports = objc_classes! {
     () = msg_super![env; this setHighlighted:highlighted];
     update(env, this);
 }
+- (bool)adjustsImageWhenHighlighted {
+    env.objc.borrow::<UIButtonHostObject>(this).adjusts_image_when_highlighted
+}
 - (())setAdjustsImageWhenHighlighted:(bool)adjusts {
-    todo_objc_setter!(this, adjusts);
+    env.objc.borrow_mut::<UIButtonHostObject>(this).adjusts_image_when_highlighted = adjusts;
+}
+- (bool)adjustsImageWhenDisabled {
+    env.objc.borrow::<UIButtonHostObject>(this).adjusts_image_when_disabled
 }
 - (())setAdjustsImageWhenDisabled:(bool)adjusts {
-    todo_objc_setter!(this, adjusts);
+    env.objc.borrow_mut::<UIButtonHostObject>(this).adjusts_image_when_disabled = adjusts;
 }
 - (())setShowsTouchWhenHighlighted:(bool)shows {
     todo_objc_setter!(this, shows);

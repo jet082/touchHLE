@@ -25,6 +25,12 @@ pub struct UIScrollViewHostObject {
     content_size: CGSize,
     content_inset: UIEdgeInsets,
     scroll_indicator_insets: UIEdgeInsets,
+    bounces: bool,
+    directional_lock_enabled: bool,
+    paging_enabled: bool,
+    shows_horizontal_scroll_indicator: bool,
+    shows_vertical_scroll_indicator: bool,
+    scrolls_to_top: bool,
 }
 impl_HostObject_with_superclass!(UIScrollViewHostObject);
 impl Default for UIScrollViewHostObject {
@@ -40,6 +46,12 @@ impl Default for UIScrollViewHostObject {
             },
             content_inset: UIEdgeInsets::default(),
             scroll_indicator_insets: UIEdgeInsets::default(),
+            bounces: true,
+            directional_lock_enabled: false,
+            paging_enabled: false,
+            shows_horizontal_scroll_indicator: true,
+            shows_vertical_scroll_indicator: true,
+            scrolls_to_top: true,
         }
     }
 }
@@ -70,10 +82,10 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 
 - (bool)bounces {
-    true
+    env.objc.borrow::<UIScrollViewHostObject>(this).bounces
 }
 - (())setBounces:(bool)bounces {
-    todo_objc_setter!(this, bounces);
+    env.objc.borrow_mut::<UIScrollViewHostObject>(this).bounces = bounces;
 }
 
 - (bool)scrollEnabled {
@@ -121,31 +133,31 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 
 - (bool)isDirectionalLockEnabled {
-    false
+    env.objc.borrow::<UIScrollViewHostObject>(this).directional_lock_enabled
 }
 - (())setDirectionalLockEnabled:(bool)enabled {
-    todo_objc_setter!(this, enabled);
+    env.objc.borrow_mut::<UIScrollViewHostObject>(this).directional_lock_enabled = enabled;
 }
 
 - (bool)showsHorizontalScrollIndicator {
-    true
+    env.objc.borrow::<UIScrollViewHostObject>(this).shows_horizontal_scroll_indicator
 }
 - (())setShowsHorizontalScrollIndicator:(bool)shows {
-    todo_objc_setter!(this, shows);
+    env.objc.borrow_mut::<UIScrollViewHostObject>(this).shows_horizontal_scroll_indicator = shows;
 }
 
 - (bool)showsVerticalScrollIndicator {
-    true
+    env.objc.borrow::<UIScrollViewHostObject>(this).shows_vertical_scroll_indicator
 }
 - (())setShowsVerticalScrollIndicator:(bool)shows {
-    todo_objc_setter!(this, shows);
+    env.objc.borrow_mut::<UIScrollViewHostObject>(this).shows_vertical_scroll_indicator = shows;
 }
 
 - (bool)isPagingEnabled {
-    false
+    env.objc.borrow::<UIScrollViewHostObject>(this).paging_enabled
 }
 - (())setPagingEnabled:(bool)enabled {
-    todo_objc_setter!(this, enabled);
+    env.objc.borrow_mut::<UIScrollViewHostObject>(this).paging_enabled = enabled;
 }
 
 - (bool)alwaysBounceVertical {
@@ -170,10 +182,10 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 
 - (bool)scrollsToTop {
-    true
+    env.objc.borrow::<UIScrollViewHostObject>(this).scrolls_to_top
 }
 - (())setScrollsToTop:(bool)enabled {
-    todo_objc_setter!(this, enabled);
+    env.objc.borrow_mut::<UIScrollViewHostObject>(this).scrolls_to_top = enabled;
 }
 
 - (bool)bouncesZoom {

@@ -64,7 +64,7 @@ fn AudioSessionInitialize(
     in_client_data: MutVoidPtr,
 ) -> OSStatus {
     let result = 0; // success
-    log!(
+    log_dbg!(
         "TODO: AudioSessionInitialize({:?}, {:?}, {:?}, {:?}) -> {:?}",
         in_run_loop,
         in_run_loop_mode,
@@ -171,7 +171,7 @@ fn AudioSessionSetProperty(
     }
 
     let result = 0; // success
-    log!(
+    log_dbg!(
         "TODO: AudioSessionSetProperty({:?}, {:?}, {:?} ({:?})) -> {:?}",
         in_ID,
         in_data_size,
@@ -184,7 +184,7 @@ fn AudioSessionSetProperty(
 
 fn AudioSessionSetActive(_env: &mut Environment, active: bool) -> OSStatus {
     let result = 0; // success
-    log!("TODO: AudioSessionSetActive({:?}) -> {:?}", active, result);
+    log_dbg!("TODO: AudioSessionSetActive({:?}) -> {:?}", active, result);
     result
 }
 
