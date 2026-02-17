@@ -7,11 +7,12 @@
 
 pub mod ui_text_view;
 use crate::frameworks::core_graphics::{CGFloat, CGPoint, CGRect, CGSize};
+use crate::frameworks::foundation::ns_string::get_static_str;
 use crate::frameworks::foundation::NSInteger;
 use crate::frameworks::uikit::ui_geometry::UIEdgeInsets;
 use crate::objc::{
-    id, impl_HostObject_with_superclass, msg, nil, objc_classes, todo_objc_setter, ClassExports,
-    NSZonePtr, SEL,
+    id, impl_HostObject_with_superclass, msg, msg_super, nil, objc_classes, todo_objc_setter,
+    ClassExports, NSZonePtr, SEL,
 };
 
 type UIScrollViewIndicatorStyle = NSInteger;
@@ -68,7 +69,7 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 
 - (id)initWithCoder:(id)coder {
-    this = msg_super![env; this initWithCoder:coder];
+    let this: id = msg_super![env; this initWithCoder:coder];
 
     let key_ns_string = get_static_str(env, "UIContentSize");
     if msg![env; coder containsValueForKey:key_ns_string] {

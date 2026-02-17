@@ -8,7 +8,7 @@
 use super::{UIControlState, UIControlStateNormal};
 use crate::frameworks::core_graphics::{CGFloat, CGPoint, CGRect, CGSize};
 use crate::frameworks::foundation::ns_string::{from_rust_string, get_static_str, to_rust_string};
-use crate::frameworks::foundation::NSInteger;
+use crate::frameworks::foundation::{NSInteger, NSUInteger};
 use crate::frameworks::uikit::ui_font::UITextAlignmentCenter;
 use crate::objc::{
     autorelease, id, impl_HostObject_with_superclass, msg, msg_class, msg_super, nil, objc_classes,

@@ -8,8 +8,8 @@
 use crate::frameworks::core_graphics::CGSize;
 use crate::frameworks::foundation::NSInteger;
 use crate::objc::{
-    id, impl_HostObject_with_superclass, msg, nil, objc_classes, todo_objc_setter, ClassExports,
-    NSZonePtr,
+    id, impl_HostObject_with_superclass, msg, msg_super, nil, objc_classes, todo_objc_setter,
+    ClassExports, NSZonePtr,
 };
 
 #[derive(Default)]

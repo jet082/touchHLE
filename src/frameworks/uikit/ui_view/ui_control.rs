@@ -16,6 +16,7 @@ pub mod ui_switch;
 pub mod ui_text_field;
 
 use crate::frameworks::core_graphics::CGPoint;
+use crate::frameworks::foundation::ns_string::get_static_str;
 use crate::frameworks::foundation::NSUInteger;
 use crate::objc::{
     id, impl_HostObject_with_superclass, msg, msg_send, msg_super, nil, objc_classes, release,
