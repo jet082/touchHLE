@@ -11,8 +11,8 @@ use crate::frameworks::core_graphics::cg_bitmap_context::CGBitmapContextDrawer;
 use crate::frameworks::core_graphics::{CGFloat, CGPoint, CGRect, CGSize};
 use crate::frameworks::foundation::ns_string::{get_static_str, to_rust_string};
 use crate::frameworks::foundation::NSInteger;
-use crate::objc::{autorelease, id, objc_classes, ClassExports, HostObject};
-use crate::Environment;
+use crate::objc::{autorelease, id, nil, objc_classes, ClassExports, HostObject};
+use crate::{msg, Environment};
 use std::collections::HashMap;
 use std::ops::Range;
 
