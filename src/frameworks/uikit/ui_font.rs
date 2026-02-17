@@ -148,13 +148,16 @@ pub const CLASSES: ClassExports = objc_classes! {
     let size_key = get_static_str(env, "UIFontSize");
     let size: CGFloat = msg![env; coder decodeFloatForKey:size_key];
 
+    let kind = if name != nil {
+        let name_str = to_rust_string(env, name).to_string();
+        get_equivalent_font(&name_str).unwrap_or(FontKind::SansRegular)
+    } else {
+        FontKind::SansRegular
+    };
+
     let host_object = env.objc.borrow_mut::<UIFontHostObject>(this);
     host_object.size = if size > 0.0 { size } else { 17.0 };
-
-    if name != nil {
-        let name_str = to_rust_string(env, name).to_string();
-        host_object.kind = get_equivalent_font(&name_str).unwrap_or(FontKind::SansRegular);
-    }
+    host_object.kind = kind;
 
     this
 }
