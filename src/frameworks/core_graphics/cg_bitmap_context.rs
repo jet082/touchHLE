@@ -20,7 +20,7 @@ use super::{CGFloat, CGPoint, CGRect};
 use crate::dyld::{export_c_func, FunctionExports};
 use crate::image::{gamma_decode, gamma_encode, Image};
 use crate::mem::{GuestUSize, Mem, MutVoidPtr};
-use crate::objc::ObjC;
+use crate::objc::{nil, ObjC};
 use crate::Environment;
 
 #[derive(Copy, Clone)]
@@ -45,28 +45,65 @@ pub fn CGBitmapContextCreate(
     color_space: CGColorSpaceRef,
     bitmap_info: u32,
 ) -> CGContextRef {
-    assert!(bits_per_component == 8); // TODO: support other bit depths
+    if bits_per_component != 8 {
+        log!(
+            "TODO: CGBitmapContextCreate only supports bits_per_component = 8, got {}",
+            bits_per_component
+        );
+        return nil;
+    }
 
-    let color_space = env.objc.borrow::<CGColorSpaceHostObject>(color_space).name;
-
-    let component_count = match color_space {
-        kCGColorSpaceGenericRGB => components_for_rgb(bitmap_info).unwrap(),
-        kCGColorSpaceGenericGray => components_for_gray(bitmap_info).unwrap(),
-        _ => unimplemented!("support other color spaces"),
+    let color_space_host = if color_space.is_null() {
+        None
+    } else {
+        env.objc.get_host_object(color_space)
+    };
+    let Some(color_space_host) = color_space_host else {
+        log!("CGBitmapContextCreate: invalid color space");
+        return nil;
+    };
+    let color_space_name = if let Some(cs) = color_space_host
+        .as_any()
+        .downcast_ref::<CGColorSpaceHostObject>()
+    {
+        cs.name
+    } else {
+        log!("CGBitmapContextCreate: color space is not a CGColorSpaceHostObject");
+        return nil;
     };
 
-    let (data, data_is_owned, bytes_per_row) = if data.is_null() {
-        let bytes_per_row = if bytes_per_row == 0 {
-            width.checked_mul(component_count).unwrap()
-        } else {
-            bytes_per_row
+    let component_count = match color_space_name {
+        kCGColorSpaceGenericRGB => components_for_rgb(bitmap_info).ok(),
+        kCGColorSpaceGenericGray => components_for_gray(bitmap_info).ok(),
+        _ => {
+            log!(
+                "TODO: CGBitmapContextCreate: support other color spaces ({})",
+                color_space_name
+            );
+            None
+        }
+    };
+    let Some(component_count) = component_count else {
+        return nil;
+    };
+
+    let bytes_per_row = if bytes_per_row == 0 {
+        let Some(bpr) = width.checked_mul(component_count) else {
+            return nil;
         };
-        let total_size = bytes_per_row.checked_mul(height).unwrap();
-        let data = env.mem.alloc(total_size);
-        (data, true, bytes_per_row)
+        bpr
     } else {
-        assert!(bytes_per_row != 0);
-        (data, false, bytes_per_row)
+        bytes_per_row
+    };
+
+    let (data, data_is_owned) = if data.is_null() {
+        let Some(total_size) = bytes_per_row.checked_mul(height) else {
+            return nil;
+        };
+        let data = env.mem.alloc(total_size);
+        (data, true)
+    } else {
+        (data, false)
     };
 
     let host_object = CGContextHostObject {
@@ -77,7 +114,7 @@ pub fn CGBitmapContextCreate(
             height,
             bits_per_component,
             bytes_per_row,
-            color_space,
+            color_space: color_space_name,
             alpha_info: bitmap_info & kCGBitmapAlphaInfoMask,
         }),
         // TODO: is this the correct default?
