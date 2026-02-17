@@ -239,6 +239,19 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow::<CALayerHostObject>(this).bounds
 }
 - (())setBounds:(CGRect)bounds {
+    let old_bounds = env.objc.borrow::<CALayerHostObject>(this).bounds;
+    if bounds == old_bounds {
+        return;
+    }
+
+    let key = get_static_str(env, "bounds");
+    let action: id = msg![env; this actionForKey:key];
+    if action != nil && action != msg_class![env; NSNull null] {
+        () = msg![env; action setFromValue:msg_class![env; NSValue valueWithCGRect:old_bounds]];
+        () = msg![env; action setToValue:msg_class![env; NSValue valueWithCGRect:bounds]];
+        crate::frameworks::core_animation::ca_transaction::State::add_animation(env, this, action);
+    }
+
     let host_object = env.objc.borrow_mut::<CALayerHostObject>(this);
     host_object.bounds = bounds;
     if host_object.needs_display_on_bounds_change {
@@ -249,6 +262,19 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow::<CALayerHostObject>(this).position
 }
 - (())setPosition:(CGPoint)position {
+    let old_position = env.objc.borrow::<CALayerHostObject>(this).position;
+    if position == old_position {
+        return;
+    }
+
+    let key = get_static_str(env, "position");
+    let action: id = msg![env; this actionForKey:key];
+    if action != nil && action != msg_class![env; NSNull null] {
+        () = msg![env; action setFromValue:msg_class![env; NSValue valueWithCGPoint:old_position]];
+        () = msg![env; action setToValue:msg_class![env; NSValue valueWithCGPoint:position]];
+        crate::frameworks::core_animation::ca_transaction::State::add_animation(env, this, action);
+    }
+
     env.objc.borrow_mut::<CALayerHostObject>(this).position = position;
 }
 - (CGPoint)anchorPoint {
@@ -261,6 +287,19 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow::<CALayerHostObject>(this).affine_transform
 }
 - (())setAffineTransform:(CGAffineTransform)affine_transform {
+    let old_transform = env.objc.borrow::<CALayerHostObject>(this).affine_transform;
+    if affine_transform == old_transform {
+        return;
+    }
+
+    let key = get_static_str(env, "transform");
+    let action: id = msg![env; this actionForKey:key];
+    if action != nil && action != msg_class![env; NSNull null] {
+        () = msg![env; action setFromValue:msg_class![env; NSValue valueWithCGAffineTransform:old_transform]];
+        () = msg![env; action setToValue:msg_class![env; NSValue valueWithCGAffineTransform:affine_transform]];
+        crate::frameworks::core_animation::ca_transaction::State::add_animation(env, this, action);
+    }
+
     env.objc.borrow_mut::<CALayerHostObject>(this).affine_transform = affine_transform;
 }
 
@@ -324,6 +363,19 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow::<CALayerHostObject>(this).opacity
 }
 - (())setOpacity:(f32)opacity {
+    let old_opacity = env.objc.borrow::<CALayerHostObject>(this).opacity;
+    if opacity == old_opacity {
+        return;
+    }
+
+    let key = get_static_str(env, "opacity");
+    let action: id = msg![env; this actionForKey:key];
+    if action != nil && action != msg_class![env; NSNull null] {
+        () = msg![env; action setFromValue:msg_class![env; NSNumber numberWithFloat:old_opacity]];
+        () = msg![env; action setToValue:msg_class![env; NSNumber numberWithFloat:opacity]];
+        crate::frameworks::core_animation::ca_transaction::State::add_animation(env, this, action);
+    }
+
     env.objc.borrow_mut::<CALayerHostObject>(this).opacity = opacity;
 }
 
@@ -371,6 +423,17 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 - (())setNeedsDisplayOnBoundsChange:(bool)value {
     env.objc.borrow_mut::<CALayerHostObject>(this).needs_display_on_bounds_change = value;
+}
+
+- (id)actionForKey:(id)key {
+    let delegate = env.objc.borrow::<CALayerHostObject>(this).delegate;
+    if delegate != nil {
+        let sel = env.objc.lookup_selector("actionForLayer:forKey:").unwrap();
+        if env.objc.object_has_method(&env.mem, delegate, sel) {
+            return msg![env; delegate actionForLayer:this forKey:key];
+        }
+    }
+    nil
 }
 
 // TODO: support setNeedsDisplayInRect:

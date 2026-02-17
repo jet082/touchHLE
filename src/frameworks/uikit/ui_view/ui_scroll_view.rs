@@ -154,6 +154,10 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow::<UIScrollViewHostObject>(this).content_offset
 }
 - (())setContentOffset:(CGPoint)offset {
+    () = msg![env; this setContentOffset:offset animated:false];
+}
+
+- (())setContentOffset:(CGPoint)offset animated:(bool)_animated {
     env.objc.borrow_mut::<UIScrollViewHostObject>(this).content_offset = offset;
     // Bounds origin should be equals to the content offset
     let mut bounds: CGRect = msg![env; this bounds];
