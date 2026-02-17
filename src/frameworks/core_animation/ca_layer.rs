@@ -22,7 +22,7 @@ use crate::frameworks::core_graphics::cg_image::{
     kCGImageAlphaPremultipliedLast, kCGImageByteOrder32Big,
 };
 use crate::frameworks::core_graphics::{CGFloat, CGPoint, CGRect, CGSize};
-use crate::frameworks::foundation::ns_string::{self, to_rust_string};
+use crate::frameworks::foundation::ns_string::{self, get_static_str, to_rust_string};
 use crate::mem::{GuestUSize, Ptr};
 use crate::objc::{
     autorelease, id, msg, msg_class, nil, objc_classes, release, retain, todo_objc_setter,
@@ -247,8 +247,10 @@ pub const CLASSES: ClassExports = objc_classes! {
     let key = get_static_str(env, "bounds");
     let action: id = msg![env; this actionForKey:key];
     if action != nil && action != msg_class![env; NSNull null] {
-        () = msg![env; action setFromValue:msg_class![env; NSValue valueWithCGRect:old_bounds]];
-        () = msg![env; action setToValue:msg_class![env; NSValue valueWithCGRect:bounds]];
+        let from_value = msg_class![env; NSValue valueWithCGRect:old_bounds];
+        let to_value = msg_class![env; NSValue valueWithCGRect:bounds];
+        () = msg![env; action setFromValue:from_value];
+        () = msg![env; action setToValue:to_value];
         crate::frameworks::core_animation::ca_transaction::State::add_animation(env, this, action);
     }
 
@@ -270,8 +272,10 @@ pub const CLASSES: ClassExports = objc_classes! {
     let key = get_static_str(env, "position");
     let action: id = msg![env; this actionForKey:key];
     if action != nil && action != msg_class![env; NSNull null] {
-        () = msg![env; action setFromValue:msg_class![env; NSValue valueWithCGPoint:old_position]];
-        () = msg![env; action setToValue:msg_class![env; NSValue valueWithCGPoint:position]];
+        let from_value = msg_class![env; NSValue valueWithCGPoint:old_position];
+        let to_value = msg_class![env; NSValue valueWithCGPoint:position];
+        () = msg![env; action setFromValue:from_value];
+        () = msg![env; action setToValue:to_value];
         crate::frameworks::core_animation::ca_transaction::State::add_animation(env, this, action);
     }
 
@@ -295,8 +299,10 @@ pub const CLASSES: ClassExports = objc_classes! {
     let key = get_static_str(env, "transform");
     let action: id = msg![env; this actionForKey:key];
     if action != nil && action != msg_class![env; NSNull null] {
-        () = msg![env; action setFromValue:msg_class![env; NSValue valueWithCGAffineTransform:old_transform]];
-        () = msg![env; action setToValue:msg_class![env; NSValue valueWithCGAffineTransform:affine_transform]];
+        let from_value = msg_class![env; NSValue valueWithCGAffineTransform:old_transform];
+        let to_value = msg_class![env; NSValue valueWithCGAffineTransform:affine_transform];
+        () = msg![env; action setFromValue:from_value];
+        () = msg![env; action setToValue:to_value];
         crate::frameworks::core_animation::ca_transaction::State::add_animation(env, this, action);
     }
 
@@ -371,8 +377,10 @@ pub const CLASSES: ClassExports = objc_classes! {
     let key = get_static_str(env, "opacity");
     let action: id = msg![env; this actionForKey:key];
     if action != nil && action != msg_class![env; NSNull null] {
-        () = msg![env; action setFromValue:msg_class![env; NSNumber numberWithFloat:old_opacity]];
-        () = msg![env; action setToValue:msg_class![env; NSNumber numberWithFloat:opacity]];
+        let from_value = msg_class![env; NSNumber numberWithFloat:old_opacity];
+        let to_value = msg_class![env; NSNumber numberWithFloat:opacity];
+        () = msg![env; action setFromValue:from_value];
+        () = msg![env; action setToValue:to_value];
         crate::frameworks::core_animation::ca_transaction::State::add_animation(env, this, action);
     }
 

@@ -294,7 +294,7 @@ pub const CLASSES: ClassExports = objc_classes! {
 // initializers. init is not, it's a shortcut for the latter.
 // Subclasses need to override both.
 
-- (id)actionForLayer:(id)layer forKey:(id)event {
+- (id)actionForLayer:(id)_layer forKey:(id)event {
     let state = &env.framework_state.uikit.ui_view;
     if state.animation_stack.is_empty() {
         return msg_class![env; NSNull null];

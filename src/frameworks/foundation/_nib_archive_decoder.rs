@@ -135,6 +135,19 @@ pub const CLASSES: ClassExports = objc_classes! {
     )
 }
 
+- (f64)decodeDoubleForKey:(id)key { // NSString *
+    // TODO: Check bounds, raise NSRangeException if it doesn't fit
+    get_value_to_decode_for_key(env, this, key).map_or(
+        0.0,
+        |value| {
+            let &ValueVariant::Double(d) = value.value() else {
+                unreachable!()
+            };
+            d
+        }
+    )
+}
+
 - (NSInteger)decodeIntegerForKey:(id)key { // NSString *
     // TODO: Check bounds, raise NSRangeException if it doesn't fit
     get_value_to_decode_for_key(env, this, key).map_or(

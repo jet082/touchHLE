@@ -218,14 +218,14 @@ pub const CLASSES: ClassExports = objc_classes! {
         return;
     }
     env.objc.borrow_mut::<UIImageViewHostObject>(this).is_animating = true;
-    () = msg![env; this _animateNextFrame];
+    () = msg![env; this _animateNextFrame:nil];
 }
 
 - (())stopAnimating {
     env.objc.borrow_mut::<UIImageViewHostObject>(this).is_animating = false;
 }
 
-- (())_animateNextFrame {
+- (())_animateNextFrame:(id)_unused {
     let (is_animating, images, duration, frame_idx) = {
         let host_obj = env.objc.borrow::<UIImageViewHostObject>(this);
         let images = if host_obj.highlighted { host_obj.highlighted_animation_images } else { host_obj.animation_images };
@@ -251,7 +251,7 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow_mut::<UIImageViewHostObject>(this).current_animation_frame = frame_idx + 1;
 
     let frame_duration = if duration > 0.0 { duration / count as f64 } else { 1.0 / 30.0 };
-    let sel = env.objc.lookup_selector("_animateNextFrame").unwrap();
+    let sel = env.objc.lookup_selector("_animateNextFrame:").unwrap();
     () = msg![env; this performSelector:sel withObject:nil afterDelay:frame_duration];
 }
 
