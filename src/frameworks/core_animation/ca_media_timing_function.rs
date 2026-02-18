@@ -55,16 +55,25 @@ struct CAMediaTimingFunctionHostObject {
 impl HostObject for CAMediaTimingFunctionHostObject {}
 impl CAMediaTimingFunctionHostObject {
     fn solve_for_input(&self, input: f32) -> f32 {
+        if input.is_nan() {
+            return 0.0;
+        }
+        if input <= 0.0 {
+            return 0.0;
+        }
+        if input >= 1.0 {
+            return 1.0;
+        }
+
         // My math is kinda rusty so i couldnt solve the equation
         // but a quick google search yielded me people "solving" it
         // by brute forcing it through binary search so... ah well
         let mut lower = 0.0;
         let mut upper = 1.0;
-        let mut t;
-        let mut x;
-        loop {
+        let mut t = input;
+        for _ in 0..100 {
             t = (upper + lower) / 2.0;
-            x = self.coord_in_curve(t, 0);
+            let x = self.coord_in_curve(t, 0);
             if (x - input).abs() < f32::EPSILON {
                 break;
             }
@@ -74,7 +83,12 @@ impl CAMediaTimingFunctionHostObject {
                 upper = t;
             }
         }
-        self.coord_in_curve(t, 1)
+        let res = self.coord_in_curve(t, 1);
+        if res.is_nan() {
+            0.0
+        } else {
+            res
+        }
     }
 
     fn coord_in_curve(&self, t: f32, x_or_y: usize) -> f32 {

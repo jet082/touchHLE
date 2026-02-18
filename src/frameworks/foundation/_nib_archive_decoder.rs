@@ -190,55 +190,86 @@ pub const CLASSES: ClassExports = objc_classes! {
 
 // These come from a category in UIKit's UIGeometry.h
 - (CGPoint)decodeCGPointForKey:(id)key { // NSString*
-    let val = get_value_to_decode_for_key(env, this, key).unwrap();
-    let ValueVariant::Data(data) = val.value() else {
-        unreachable!()
-    };
-    assert_eq!(6, data[0]);
-    let x = f32::from_le_bytes(data[1..5].try_into().unwrap());
-    let y = f32::from_le_bytes(data[5..9].try_into().unwrap());
-    log_dbg!("decoded CGPoint {} {}", x, y);
-    CGPoint { x, y }
+    let val = get_value_to_decode_for_key(env, this, key);
+    if let Some(val) = val {
+        let ValueVariant::Data(data) = val.value() else {
+            unreachable!()
+        };
+        assert_eq!(6, data[0]);
+        let mut x = f32::from_le_bytes(data[1..5].try_into().unwrap());
+        let mut y = f32::from_le_bytes(data[5..9].try_into().unwrap());
+        if x.is_nan() { x = 0.0; }
+        if y.is_nan() { y = 0.0; }
+        log_dbg!("decoded CGPoint {} {}", x, y);
+        CGPoint { x, y }
+    } else {
+        CGPoint { x: 0.0, y: 0.0 }
+    }
 }
 - (CGRect)decodeCGRectForKey:(id)key { // NSString*
-    let val = get_value_to_decode_for_key(env, this, key).unwrap();
-    let ValueVariant::Data(data) = val.value() else {
-        unreachable!()
-    };
-    assert_eq!(6, data[0]);
-    let x = f32::from_le_bytes(data[1..5].try_into().unwrap());
-    let y = f32::from_le_bytes(data[5..9].try_into().unwrap());
-    let width = f32::from_le_bytes(data[9..13].try_into().unwrap());
-    let height = f32::from_le_bytes(data[13..17].try_into().unwrap());
-    log_dbg!("decoded CGRect {} {} {} {}", x, y, width, height);
-    CGRect {
-        origin: CGPoint { x, y },
-        size: CGSize { width, height },
+    let val = get_value_to_decode_for_key(env, this, key);
+    if let Some(val) = val {
+        let ValueVariant::Data(data) = val.value() else {
+            unreachable!()
+        };
+        assert_eq!(6, data[0]);
+        let mut x = f32::from_le_bytes(data[1..5].try_into().unwrap());
+        let mut y = f32::from_le_bytes(data[5..9].try_into().unwrap());
+        let mut width = f32::from_le_bytes(data[9..13].try_into().unwrap());
+        let mut height = f32::from_le_bytes(data[13..17].try_into().unwrap());
+        if x.is_nan() { x = 0.0; }
+        if y.is_nan() { y = 0.0; }
+        if width.is_nan() { width = 0.0; }
+        if height.is_nan() { height = 0.0; }
+        log_dbg!("decoded CGRect {} {} {} {}", x, y, width, height);
+        CGRect {
+            origin: CGPoint { x, y },
+            size: CGSize { width, height },
+        }
+    } else {
+        CGRect {
+            origin: CGPoint { x: 0.0, y: 0.0 },
+            size: CGSize { width: 0.0, height: 0.0 },
+        }
     }
 }
 - (CGSize)decodeCGSizeForKey:(id)key { // NSString*
-    let val = get_value_to_decode_for_key(env, this, key).unwrap();
-    let ValueVariant::Data(data) = val.value() else {
-        unreachable!()
-    };
-    assert_eq!(6, data[0]);
-    let width = f32::from_le_bytes(data[1..5].try_into().unwrap());
-    let height = f32::from_le_bytes(data[5..9].try_into().unwrap());
-    log_dbg!("decoded CGSize {} {}", width, height);
-    CGSize { width, height }
+    let val = get_value_to_decode_for_key(env, this, key);
+    if let Some(val) = val {
+        let ValueVariant::Data(data) = val.value() else {
+            unreachable!()
+        };
+        assert_eq!(6, data[0]);
+        let mut width = f32::from_le_bytes(data[1..5].try_into().unwrap());
+        let mut height = f32::from_le_bytes(data[5..9].try_into().unwrap());
+        if width.is_nan() { width = 0.0; }
+        if height.is_nan() { height = 0.0; }
+        log_dbg!("decoded CGSize {} {}", width, height);
+        CGSize { width, height }
+    } else {
+        CGSize { width: 0.0, height: 0.0 }
+    }
 }
 - (crate::frameworks::uikit::ui_geometry::UIEdgeInsets)decodeUIEdgeInsetsForKey:(id)key { // NSString*
-    let val = get_value_to_decode_for_key(env, this, key).unwrap();
-    let ValueVariant::Data(data) = val.value() else {
-        unreachable!()
-    };
-    assert_eq!(6, data[0]);
-    let top = f32::from_le_bytes(data[1..5].try_into().unwrap());
-    let left = f32::from_le_bytes(data[5..9].try_into().unwrap());
-    let bottom = f32::from_le_bytes(data[9..13].try_into().unwrap());
-    let right = f32::from_le_bytes(data[13..17].try_into().unwrap());
-    log_dbg!("decoded UIEdgeInsets {} {} {} {}", top, left, bottom, right);
-    crate::frameworks::uikit::ui_geometry::UIEdgeInsets { top, left, bottom, right }
+    let val = get_value_to_decode_for_key(env, this, key);
+    if let Some(val) = val {
+        let ValueVariant::Data(data) = val.value() else {
+            unreachable!()
+        };
+        assert_eq!(6, data[0]);
+        let mut top = f32::from_le_bytes(data[1..5].try_into().unwrap());
+        let mut left = f32::from_le_bytes(data[5..9].try_into().unwrap());
+        let mut bottom = f32::from_le_bytes(data[9..13].try_into().unwrap());
+        let mut right = f32::from_le_bytes(data[13..17].try_into().unwrap());
+        if top.is_nan() { top = 0.0; }
+        if left.is_nan() { left = 0.0; }
+        if bottom.is_nan() { bottom = 0.0; }
+        if right.is_nan() { right = 0.0; }
+        log_dbg!("decoded UIEdgeInsets {} {} {} {}", top, left, bottom, right);
+        crate::frameworks::uikit::ui_geometry::UIEdgeInsets { top, left, bottom, right }
+    } else {
+        crate::frameworks::uikit::ui_geometry::UIEdgeInsets { top: 0.0, left: 0.0, bottom: 0.0, right: 0.0 }
+    }
 }
 
 @end

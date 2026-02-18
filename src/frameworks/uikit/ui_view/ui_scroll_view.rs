@@ -192,6 +192,8 @@ pub const CLASSES: ClassExports = objc_classes! {
             this,
             size
         );
+        // Trace current PC to see where it comes from
+        log_dbg!("Guest state: PC=0x{:08x}, LR=0x{:08x}", env.cpu.pc(), env.cpu.lr());
         if size.width.is_nan() {
             size.width = 0.0;
         }

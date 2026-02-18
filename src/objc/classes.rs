@@ -435,13 +435,15 @@ fn substitute_classes(
     if !(name.starts_with("AdMob")
         || name.starts_with("AltAds")
         || name.starts_with("Mobclix")
-        || name.starts_with("FBRequest") // Facebook
-        || name.starts_with("FBSession") // Facebook
-        || name.starts_with("FBGraph")   // Facebook
-        || name.starts_with("FBDialog")  // Facebook
-        || name.starts_with("FBApp")     // Facebook
-        || name.starts_with("FBWeb")     // Facebook
-        || name.starts_with("FBLogin")   // Facebook
+        || name.starts_with("FBRequest")      // Facebook
+        || name.starts_with("FBSession")      // Facebook
+        || name.starts_with("FBGraph")        // Facebook
+        || name.starts_with("FBDialog")       // Facebook
+        || name.starts_with("FBAppCall")      // Facebook
+        || name.starts_with("FBAppEvents")    // Facebook
+        || name.starts_with("FBWeb")          // Facebook
+        || name.starts_with("FBLogin")        // Facebook
+        || name.starts_with("FBSDK")          // Facebook
         || name.starts_with("Flurry")
         || name.starts_with("OpenFeint")
         || name.starts_with("Tapjoy"))

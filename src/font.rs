@@ -130,21 +130,26 @@ impl Font {
 
     pub fn ascent(&self, font_size: f32) -> f32 {
         let v_metrics = self.font.v_metrics(scale(font_size));
-        v_metrics.ascent
+        if v_metrics.ascent.is_nan() { 0.0 } else { v_metrics.ascent }
     }
     pub fn descent(&self, font_size: f32) -> f32 {
         let v_metrics = self.font.v_metrics(scale(font_size));
-        v_metrics.descent
+        if v_metrics.descent.is_nan() { 0.0 } else { v_metrics.descent }
     }
 
     pub fn line_gap(&self, font_size: f32) -> f32 {
         let v_metrics = self.font.v_metrics(scale(font_size));
-        v_metrics.line_gap
+        if v_metrics.line_gap.is_nan() { 0.0 } else { v_metrics.line_gap }
     }
 
     fn line_height_and_gap(&self, font_size: f32) -> (f32, f32) {
         let v_metrics = self.font.v_metrics(scale(font_size));
-        (v_metrics.ascent - v_metrics.descent, v_metrics.line_gap)
+        let height = v_metrics.ascent - v_metrics.descent;
+        let gap = v_metrics.line_gap;
+        (
+            if height.is_nan() { 0.0 } else { height },
+            if gap.is_nan() { 0.0 } else { gap }
+        )
     }
 
     /// Calculate the width of a line. This does not handle newlines!

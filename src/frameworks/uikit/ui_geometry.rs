@@ -47,9 +47,13 @@ pub fn NSStringFromCGRect(env: &mut Environment, rect: CGRect) -> id {
 
 pub fn CGAffineTransformFromString(env: &mut Environment, string: id) -> CGAffineTransform {
     // TODO: avoid copy
-    ns_string::to_rust_string(env, string)
+    let mut res = ns_string::to_rust_string(env, string)
         .parse()
-        .unwrap_or(crate::frameworks::core_graphics::cg_affine_transform::CGAffineTransformIdentity)
+        .unwrap_or(crate::frameworks::core_graphics::cg_affine_transform::CGAffineTransformIdentity);
+    if res.a.is_nan() || res.b.is_nan() || res.c.is_nan() || res.d.is_nan() || res.tx.is_nan() || res.ty.is_nan() {
+        res = crate::frameworks::core_graphics::cg_affine_transform::CGAffineTransformIdentity;
+    }
+    res
 }
 
 pub fn NSStringFromCGAffineTransform(env: &mut Environment, transform: CGAffineTransform) -> id {
