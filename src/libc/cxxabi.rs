@@ -21,7 +21,7 @@ fn __cxa_atexit(
 ) -> i32 {
     // TODO: when this is implemented, make sure it's properly compatible with
     // C atexit.
-    log!(
+    log_dbg!(
         "TODO: __cxa_atexit({:?}, {:?}, {:?}) (unimplemented)",
         func,
         p,

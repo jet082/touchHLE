@@ -431,8 +431,8 @@ fn get_equivalent_font(system_font: &str) -> Option<FontKind> {
         "STHeitiTC-Light" => None,
         "STHeitiTC-Medium" => None,
         // Font Family: Hiragino Kaku Gothic ProN
-        "HiraKakuProN-W6" => None,
-        "HiraKakuProN-W3" => None,
+        "HiraKakuProN-W6" => Some(FontKind::SansRegular),
+        "HiraKakuProN-W3" => Some(FontKind::SansRegular),
         // Font Family: Courier New
         "CourierNewPS-BoldMT" => Some(FontKind::MonoRegular),
         "CourierNewPS-ItalicMT" => Some(FontKind::MonoBold),
@@ -449,15 +449,15 @@ fn get_equivalent_font(system_font: &str) -> Option<FontKind> {
         "AmericanTypewriter" => Some(FontKind::MonoRegular),
         "AmericanTypewriter-Bold" => Some(FontKind::MonoBold),
         // Font Family: Helvetica
-        "Helvetica-Oblique" => None,
-        "Helvetica-BoldOblique" => None,
-        "Helvetica" => None,
-        "Helvetica-Bold" => None,
+        "Helvetica-Oblique" => Some(FontKind::SansItalic),
+        "Helvetica-BoldOblique" => Some(FontKind::SansBoldItalic),
+        "Helvetica" => Some(FontKind::SansRegular),
+        "Helvetica-Bold" => Some(FontKind::SansBold),
         // Font Family: Marker Felt
         "MarkerFelt-Thin" => None,
         // Font Family: Helvetica Neue
-        "HelveticaNeue" => None,
-        "HelveticaNeue-Bold" => None,
+        "HelveticaNeue" => Some(FontKind::SansRegular),
+        "HelveticaNeue-Bold" => Some(FontKind::SansBold),
         // Font Family: DB LCD Temp
         "DBLCDTempBlack" => None,
         // Font Family: Verdana

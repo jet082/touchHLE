@@ -73,6 +73,8 @@ pub(super) struct UIViewHostObject {
     clears_context_before_drawing: bool,
     user_interaction_enabled: bool,
     multiple_touch_enabled: bool,
+    autoresizes_subviews: bool,
+    autoresizing_mask: NSUInteger,
 }
 impl HostObject for UIViewHostObject {}
 impl Default for UIViewHostObject {
@@ -88,6 +90,8 @@ impl Default for UIViewHostObject {
             clears_context_before_drawing: true,
             user_interaction_enabled: true,
             multiple_touch_enabled: false,
+            autoresizes_subviews: true,
+            autoresizing_mask: 0, // UIViewAutoresizingNone
         }
     }
 }
@@ -388,6 +392,16 @@ pub const CLASSES: ClassExports = objc_classes! {
     let key_ns_string = get_static_str(env, "UIMultipleTouchEnabled");
     let multi_touch_enabled: bool = msg![env; coder decodeBoolForKey:key_ns_string];
 
+    let key_ns_string = get_static_str(env, "UIAutoresizeSubviews");
+    let autoresizes_subviews: bool = if msg![env; coder containsValueForKey:key_ns_string] {
+        msg![env; coder decodeBoolForKey:key_ns_string]
+    } else {
+        true
+    };
+
+    let key_ns_string = get_static_str(env, "UIAutoresizingMask");
+    let autoresizing_mask: NSUInteger = msg![env; coder decodeIntegerForKey:key_ns_string];
+
     let key_ns_string = get_static_str(env, "UISubviews");
     let subviews: id = msg![env; coder decodeObjectForKey:key_ns_string];
     let subview_count: NSUInteger = msg![env; subviews count];
@@ -413,6 +427,8 @@ pub const CLASSES: ClassExports = objc_classes! {
     () = msg![env; this setBackgroundColor:bg_color];
     () = msg![env; this setTag:tag];
     () = msg![env; this setMultipleTouchEnabled:multi_touch_enabled];
+    () = msg![env; this setAutoresizesSubviews:autoresizes_subviews];
+    () = msg![env; this setAutoresizingMask:autoresizing_mask];
 
     for i in 0..subview_count {
         let subview: id = msg![env; subviews objectAtIndex:i];
@@ -923,15 +939,24 @@ pub const CLASSES: ClassExports = objc_classes! {
     msg![env; this_layer convertRect:rect toLayer:other_layer]
 }
 
+- (NSUInteger)autoresizingMask {
+    env.objc.borrow::<UIViewHostObject>(this).autoresizing_mask
+}
 - (())setAutoresizingMask:(NSUInteger)mask {
-    todo_objc_setter!(this, mask);
+    env.objc.borrow_mut::<UIViewHostObject>(this).autoresizing_mask = mask;
+}
+- (bool)autoresizesSubviews {
+    env.objc.borrow::<UIViewHostObject>(this).autoresizes_subviews
 }
 - (())setAutoresizesSubviews:(bool)enabled {
-    todo_objc_setter!(this, enabled);
+    env.objc.borrow_mut::<UIViewHostObject>(this).autoresizes_subviews = enabled;
 }
 
 - (CGSize)sizeThatFits:(CGSize)size {
     // default implementation, subclasses can override
+    let mut size = size;
+    if size.width.is_nan() { size.width = 0.0; }
+    if size.height.is_nan() { size.height = 0.0; }
     size
 }
 - (())sizeToFit {
