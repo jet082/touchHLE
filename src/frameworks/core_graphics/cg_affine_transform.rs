@@ -246,6 +246,9 @@ impl CGAffineTransform {
         Self::make_translation(x, y).concat(self)
     }
     pub fn invert(self) -> Self {
+        if self.a.is_nan() || self.b.is_nan() || self.c.is_nan() || self.d.is_nan() || self.tx.is_nan() || self.ty.is_nan() {
+            return CGAffineTransformIdentity;
+        }
         let self_3x3: Matrix<3> = self.into();
         if let Some(inverse) = Matrix::<3>::from(&self_3x3).inverse() {
             // Matrix inversion sometimes produces values in the last column
@@ -253,7 +256,12 @@ impl CGAffineTransform {
             // The TryFrom check causes crashes in that case, and it is a waste
             // of energy to begin with as the result of inverting an affine
             // transformation matrix will also be affine.
-            affine_transform_from_matrix_unchecked(inverse)
+            let res = affine_transform_from_matrix_unchecked(inverse);
+            if res.a.is_nan() || res.b.is_nan() || res.c.is_nan() || res.d.is_nan() || res.tx.is_nan() || res.ty.is_nan() {
+                CGAffineTransformIdentity
+            } else {
+                res
+            }
         } else {
             self
         }

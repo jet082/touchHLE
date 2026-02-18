@@ -105,20 +105,31 @@ impl StringHostObject {
 
         match encoding {
             NSASCIIStringEncoding => {
-                assert!(bytes.iter().all(|byte| byte.is_ascii()));
-                // Safety: guaranteed by above assertion
-                let string = unsafe { String::from_utf8_unchecked(bytes.into_owned()) };
+                let string = if bytes.iter().all(|byte| byte.is_ascii()) {
+                    // Safety: guaranteed by above check
+                    unsafe { String::from_utf8_unchecked(bytes.into_owned()) }
+                } else {
+                    log!("Warning: invalid ASCII string, using empty string instead");
+                    String::new()
+                };
                 StringHostObject::Utf8(Cow::Owned(string))
             }
             NSMacOSRomanStringEncoding | NSISOLatin1StringEncoding => {
                 // TODO: support non ASCII symbols
-                assert!(bytes.iter().all(|byte| byte.is_ascii()));
-                // Safety: guaranteed by above assertion
-                let string = unsafe { String::from_utf8_unchecked(bytes.into_owned()) };
+                let string = if bytes.iter().all(|byte| byte.is_ascii()) {
+                    // Safety: guaranteed by above check
+                    unsafe { String::from_utf8_unchecked(bytes.into_owned()) }
+                } else {
+                    log!("Warning: invalid MacRoman/ISOLatin1 string, using empty string instead");
+                    String::new()
+                };
                 StringHostObject::Utf8(Cow::Owned(string))
             }
             NSUTF8StringEncoding => {
-                let string = String::from_utf8(bytes.into_owned()).unwrap();
+                let string = String::from_utf8(bytes.into_owned()).unwrap_or_else(|e| {
+                    log!("Warning: invalid UTF-8 string: {}, using empty string instead", e);
+                    String::new()
+                });
                 StringHostObject::Utf8(Cow::Owned(string))
             }
             NSWindowsCP1252StringEncoding => {

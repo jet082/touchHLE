@@ -93,6 +93,11 @@ pub fn CGBitmapContextCreate(
         };
         bpr
     } else {
+        let min_bpr = width * component_count;
+        if bytes_per_row < min_bpr {
+            log!("CGBitmapContextCreate: bytes_per_row {} is too small for width {} and component_count {} (min {})", bytes_per_row, width, component_count, min_bpr);
+            return nil;
+        }
         bytes_per_row
     };
 
@@ -621,7 +626,7 @@ pub(super) fn draw_image(
     rect: CGRect,
     image: CGImageRef,
 ) {
-    if context == nil {
+    if context == nil || image == nil {
         return;
     }
     let image = cg_image::borrow_image(&env.objc, image);

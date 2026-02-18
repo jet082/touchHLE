@@ -169,7 +169,12 @@ impl State {
                         to_value,
                         by_value,
                     );
-                    presentation.anchor_point = from_value + by_value * interpolation_amount;
+                    let mut res = from_value + by_value * interpolation_amount;
+                    if res.x.is_nan() || res.y.is_nan() {
+                        if res.x.is_nan() { res.x = 0.5; }
+                        if res.y.is_nan() { res.y = 0.5; }
+                    }
+                    presentation.anchor_point = res;
                 }
                 "backgroundColor" => {
                     let from_value = id_as_option(from_value)
@@ -197,7 +202,14 @@ impl State {
                         to_value,
                         by_value,
                     );
-                    presentation.bounds = from_value + by_value * interpolation_amount;
+                    let mut res = from_value + by_value * interpolation_amount;
+                    if res.origin.x.is_nan() || res.origin.y.is_nan() || res.size.width.is_nan() || res.size.height.is_nan() {
+                        if res.origin.x.is_nan() { res.origin.x = 0.0; }
+                        if res.origin.y.is_nan() { res.origin.y = 0.0; }
+                        if res.size.width.is_nan() { res.size.width = 0.0; }
+                        if res.size.height.is_nan() { res.size.height = 0.0; }
+                    }
+                    presentation.bounds = res;
                 }
                 "center" | "position" => {
                     let from_value =
@@ -210,7 +222,12 @@ impl State {
                         to_value,
                         by_value,
                     );
-                    presentation.position = from_value + by_value * interpolation_amount;
+                    let mut res = from_value + by_value * interpolation_amount;
+                    if res.x.is_nan() || res.y.is_nan() {
+                        if res.x.is_nan() { res.x = 0.0; }
+                        if res.y.is_nan() { res.y = 0.0; }
+                    }
+                    presentation.position = res;
                 }
                 "cornerRadius" => {
                     let from_value = id_as_option(from_value).map(|obj| msg![env; obj floatValue]);
@@ -267,7 +284,11 @@ impl State {
                         to_value,
                         by_value,
                     );
-                    presentation.affine_transform = from_value + by_value * interpolation_amount;
+                    let mut res = from_value + by_value * interpolation_amount;
+                    if res.a.is_nan() || res.b.is_nan() || res.c.is_nan() || res.d.is_nan() || res.tx.is_nan() || res.ty.is_nan() {
+                        res = crate::frameworks::core_graphics::cg_affine_transform::CGAffineTransformIdentity;
+                    }
+                    presentation.affine_transform = res;
                 }
                 _ => panic!("Attempted to animate on key {}", key_path),
             }

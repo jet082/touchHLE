@@ -430,6 +430,7 @@ unsafe fn composite_layer_recursive(
         || host_obj.position.x.is_nan()
         || host_obj.position.y.is_nan()
     {
+        log!("Warning: skipping layer {:?} due to NaN geometry: bounds {:?}, position {:?}", layer, host_obj.bounds, host_obj.position);
         return;
     }
 

@@ -301,6 +301,12 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow::<CALayerHostObject>(this).anchor_point
 }
 - (())setAnchorPoint:(CGPoint)anchor_point {
+    let mut anchor_point = anchor_point;
+    if anchor_point.x.is_nan() || anchor_point.y.is_nan() {
+        log!("Warning: [(CALayer*){:?} setAnchorPoint:{:?}] contains NaN, using 0.5 instead", this, anchor_point);
+        if anchor_point.x.is_nan() { anchor_point.x = 0.5; }
+        if anchor_point.y.is_nan() { anchor_point.y = 0.5; }
+    }
     env.objc.borrow_mut::<CALayerHostObject>(this).anchor_point = anchor_point;
 }
 - (CGAffineTransform)affineTransform {
