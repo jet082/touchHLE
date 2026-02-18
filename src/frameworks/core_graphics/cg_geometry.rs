@@ -360,10 +360,10 @@ fn CGRectInset(_env: &mut Environment, rect: CGRect, dx: CGFloat, dy: CGFloat) -
     if rect == CGRectNull {
         return CGRectNull;
     }
-    let mut x = rect.origin.x + dx;
-    let mut y = rect.origin.y + dy;
-    let mut width = rect.size.width - 2.0 * dx;
-    let mut height = rect.size.height - 2.0 * dy;
+    let x = rect.origin.x + dx;
+    let y = rect.origin.y + dy;
+    let width = rect.size.width - 2.0 * dx;
+    let height = rect.size.height - 2.0 * dy;
 
     if x.is_nan() || y.is_nan() || width.is_nan() || height.is_nan() {
         return rect;
