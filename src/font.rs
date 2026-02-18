@@ -306,12 +306,19 @@ impl Font {
     ) -> (f32, f32) {
         let lines = self.break_lines(font_size, text, wrap);
 
-        let width = lines
+        let mut width = lines
             .iter()
             .fold(0f32, |widest, &(line_width, _line)| widest.max(line_width));
         let (line_height, line_gap) = self.line_height_and_gap(font_size);
-        let height =
+        let mut height =
             line_height * (lines.len() as f32) + line_gap * (lines.len().saturating_sub(1) as f32);
+
+        if width.is_nan() {
+            width = 0.0;
+        }
+        if height.is_nan() {
+            height = 0.0;
+        }
 
         (width, height)
     }

@@ -435,7 +435,7 @@ fn substitute_classes(
     if !(name.starts_with("AdMob")
         || name.starts_with("AltAds")
         || name.starts_with("Mobclix")
-        || name.starts_with("FB") // Facebook
+        || (name.starts_with("FB") && !name.starts_with("FBomb")) // Facebook (ignoring Konami's FBomb)
         || name.starts_with("Flurry")
         || name.starts_with("OpenFeint")
         || name.starts_with("Tapjoy"))

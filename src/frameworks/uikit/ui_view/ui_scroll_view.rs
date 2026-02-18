@@ -170,6 +170,20 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow::<UIScrollViewHostObject>(this).content_size
 }
 - (())setContentSize:(CGSize)size {
+    let mut size = size;
+    if size.width.is_nan() || size.height.is_nan() {
+        log!(
+            "Warning: [(UIScrollView*){:?} setContentSize:{:?}] contains NaN, using 0.0 instead",
+            this,
+            size
+        );
+        if size.width.is_nan() {
+            size.width = 0.0;
+        }
+        if size.height.is_nan() {
+            size.height = 0.0;
+        }
+    }
     env.objc.borrow_mut::<UIScrollViewHostObject>(this).content_size = size;
 }
 

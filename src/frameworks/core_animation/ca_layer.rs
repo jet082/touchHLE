@@ -320,6 +320,9 @@ pub const CLASSES: ClassExports = objc_classes! {
     })
 }
 - (())setFrame:(CGRect)frame {
+    if frame.origin.x.is_nan() || frame.origin.y.is_nan() || frame.size.width.is_nan() || frame.size.height.is_nan() {
+        log!("Warning: [(CALayer*){:?} setFrame:{:?}] contains NaN", this, frame);
+    }
     let CALayerHostObject {
         anchor_point,
         affine_transform,

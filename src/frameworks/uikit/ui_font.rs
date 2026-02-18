@@ -105,7 +105,7 @@ pub const CLASSES: ClassExports = objc_classes! {
 
 + (id)systemFontOfSize:(CGFloat)size {
     let host_object = UIFontHostObject {
-        size,
+        size: if size > 0.0 { size } else { 17.0 },
         kind: FontKind::SansRegular,
     };
     let new = env.objc.alloc_object(this, Box::new(host_object), &mut env.mem);
@@ -113,7 +113,7 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 + (id)boldSystemFontOfSize:(CGFloat)size {
     let host_object = UIFontHostObject {
-        size,
+        size: if size > 0.0 { size } else { 17.0 },
         kind: FontKind::SansBold,
     };
     let new = env.objc.alloc_object(this, Box::new(host_object), &mut env.mem);
@@ -121,7 +121,7 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 + (id)italicSystemFontOfSize:(CGFloat)size {
     let host_object = UIFontHostObject {
-        size,
+        size: if size > 0.0 { size } else { 17.0 },
         kind: FontKind::SansItalic,
     };
     let new = env.objc.alloc_object(this, Box::new(host_object), &mut env.mem);
@@ -135,7 +135,7 @@ pub const CLASSES: ClassExports = objc_classes! {
             log!("No replacement found for font {}. Using system font instead.", font_name);
             FontKind::SansRegular
         }),
-        size: fontSize,
+        size: if fontSize > 0.0 { fontSize } else { 17.0 },
     };
     let new = env.objc.alloc_object(this, Box::new(host_object), &mut env.mem);
     autorelease(env, new)

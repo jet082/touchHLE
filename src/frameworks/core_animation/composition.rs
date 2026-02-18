@@ -423,6 +423,16 @@ unsafe fn composite_layer_recursive(
         return;
     }
 
+    if host_obj.bounds.origin.x.is_nan()
+        || host_obj.bounds.origin.y.is_nan()
+        || host_obj.bounds.size.width.is_nan()
+        || host_obj.bounds.size.height.is_nan()
+        || host_obj.position.x.is_nan()
+        || host_obj.position.y.is_nan()
+    {
+        return;
+    }
+
     let window = env.window.as_mut().unwrap();
     let mut gles = window.make_internal_gl_ctx_current();
 
