@@ -246,7 +246,7 @@ impl Font {
                         let line = &line[line_start..wrap_point];
                         let line_width = self
                             .calculate_line_width(font_size, trim_wrapped_line(wrap_mode, line));
-                        line_width.partial_cmp(&wrap_width).unwrap()
+                        line_width.partial_cmp(&wrap_width).unwrap_or(std::cmp::Ordering::Less)
                     });
                 let wrap_point_idx = match wrap_search_result {
                     Ok(i) => next_wrap_point_idx + i,
