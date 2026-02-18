@@ -418,7 +418,7 @@ impl CGBitmapContextDrawer<'_> {
         let pixels = get_pixels(bitmap_info, mem);
 
         CGBitmapContextDrawer {
-            bitmap_info,
+            bitmap_info: *bitmap_info,
             rgb_fill_color,
             transform,
             pixels,
