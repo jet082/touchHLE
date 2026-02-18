@@ -407,14 +407,15 @@ impl CGBitmapContextDrawer<'_> {
         mem: &'a mut Mem,
         context: CGContextRef,
     ) -> CGBitmapContextDrawer<'a> {
+        let host_object = objc.get_host_object(context).expect("Called CGBitmapContextDrawer::new() on nil or unknown object");
         let &CGContextHostObject {
-            subclass: CGContextSubclass::CGBitmapContext(bitmap_info),
+            subclass: CGContextSubclass::CGBitmapContext(ref bitmap_info),
             rgb_fill_color,
             transform,
             ..
-        } = objc.borrow(context);
+        } = host_object.as_any().downcast_ref().expect("Called CGBitmapContextDrawer::new() on non-context object");
 
-        let pixels = get_pixels(&bitmap_info, mem);
+        let pixels = get_pixels(bitmap_info, mem);
 
         CGBitmapContextDrawer {
             bitmap_info,
@@ -620,6 +621,9 @@ pub(super) fn draw_image(
     rect: CGRect,
     image: CGImageRef,
 ) {
+    if context == nil {
+        return;
+    }
     let image = cg_image::borrow_image(&env.objc, image);
 
     let mut drawer = CGBitmapContextDrawer::new(&env.objc, &mut env.mem, context);

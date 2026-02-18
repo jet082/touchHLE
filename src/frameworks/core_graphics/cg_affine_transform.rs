@@ -206,19 +206,32 @@ impl CGAffineTransform {
         self == CGAffineTransformIdentity
     }
     pub fn make_rotation(angle: CGFloat) -> Self {
+        if angle.is_nan() {
+            return CGAffineTransformIdentity;
+        }
         Matrix::<3>::from(&Matrix::<2>::z_rotation(angle))
             .try_into()
             .unwrap()
     }
     pub fn make_scale(x: CGFloat, y: CGFloat) -> Self {
+        if x.is_nan() || y.is_nan() {
+            return CGAffineTransformIdentity;
+        }
         Matrix::<3>::from(&Matrix::<2>::scale_2d(x, y))
             .try_into()
             .unwrap()
     }
     pub fn make_translation(x: CGFloat, y: CGFloat) -> Self {
+        if x.is_nan() || y.is_nan() {
+            return CGAffineTransformIdentity;
+        }
         Matrix::<3>::translate_2d(x, y).try_into().unwrap()
     }
     pub fn concat(self, other: Self) -> Self {
+        if self.a.is_nan() || self.b.is_nan() || self.c.is_nan() || self.d.is_nan() || self.tx.is_nan() || self.ty.is_nan() ||
+           other.a.is_nan() || other.b.is_nan() || other.c.is_nan() || other.d.is_nan() || other.tx.is_nan() || other.ty.is_nan() {
+            return CGAffineTransformIdentity;
+        }
         Matrix::<3>::multiply(&self.into(), &other.into())
             .try_into()
             .unwrap()

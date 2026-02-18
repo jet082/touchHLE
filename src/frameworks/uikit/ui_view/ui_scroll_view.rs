@@ -158,6 +158,21 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 
 - (())setContentOffset:(CGPoint)offset animated:(bool)_animated {
+    let mut offset = offset;
+    if offset.x.is_nan() || offset.y.is_nan() {
+        log!(
+            "Warning: [(UIScrollView*){:?} setContentOffset:{:?} animated:{}] contains NaN, using 0.0 instead",
+            this,
+            offset,
+            _animated
+        );
+        if offset.x.is_nan() {
+            offset.x = 0.0;
+        }
+        if offset.y.is_nan() {
+            offset.y = 0.0;
+        }
+    }
     env.objc.borrow_mut::<UIScrollViewHostObject>(this).content_offset = offset;
     // Bounds origin should be equals to the content offset
     let mut bounds: CGRect = msg![env; this bounds];

@@ -1724,12 +1724,16 @@ pub fn to_rust_string(env: &mut Environment, string: id) -> Cow<'static, str> {
         log!("Warning: to_rust_string called with unknown object {:?}", string);
         return Cow::Borrowed("");
     };
-    host_object
-        .as_any()
-        .downcast_ref::<StringHostObject>()
-        .expect("to_rust_string: object is not a NSString")
+    let Some(string_host_object) = host_object.as_any().downcast_ref::<StringHostObject>() else {
+        log!("Warning: to_rust_string: object {:?} is not a NSString", string);
+        return Cow::Borrowed("");
+    };
+    string_host_object
         .to_utf8()
-        .unwrap()
+        .unwrap_or_else(|e| {
+            log!("Warning: to_rust_string: invalid UTF-16 in object {:?}: {}", string, e);
+            Cow::Borrowed("")
+        })
 }
 
 /// Shortcut for host code, calls a callback once for each UTF-16 code-unit in a

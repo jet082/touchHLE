@@ -165,17 +165,20 @@ pub const CLASSES: ClassExports = objc_classes! {
 - (CGFloat)ascender {
     let host_object = env.objc.borrow::<UIFontHostObject>(this);
     let font = env.framework_state.uikit.ui_font.get_font_by_kind(host_object.kind);
-    font.ascent(host_object.size)
+    let val = font.ascent(host_object.size);
+    if val.is_nan() { 0.0 } else { val }
 }
 - (CGFloat)descender {
     let host_object = env.objc.borrow::<UIFontHostObject>(this);
     let font = env.framework_state.uikit.ui_font.get_font_by_kind(host_object.kind);
-    font.descent(host_object.size)
+    let val = font.descent(host_object.size);
+    if val.is_nan() { 0.0 } else { val }
 }
 - (CGFloat)leading {
     let host_object = env.objc.borrow::<UIFontHostObject>(this);
     let font = env.framework_state.uikit.ui_font.get_font_by_kind(host_object.kind);
-    font.line_gap(host_object.size)
+    let val = font.line_gap(host_object.size);
+    if val.is_nan() { 0.0 } else { val }
 }
 
 @end
