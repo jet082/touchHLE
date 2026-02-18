@@ -130,7 +130,11 @@ pub const CLASSES: ClassExports = objc_classes! {
             let &ValueVariant::Float(f) = value.value() else {
                 unreachable!()
             };
-            f
+            if f.is_nan() {
+                0.0
+            } else {
+                f
+            }
         }
     )
 }
@@ -143,7 +147,11 @@ pub const CLASSES: ClassExports = objc_classes! {
             let &ValueVariant::Double(d) = value.value() else {
                 unreachable!()
             };
-            d
+            if d.is_nan() {
+                0.0
+            } else {
+                d
+            }
         }
     )
 }

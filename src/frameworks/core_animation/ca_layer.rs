@@ -399,6 +399,12 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow::<CALayerHostObject>(this).opacity
 }
 - (())setOpacity:(f32)opacity {
+    let mut opacity = opacity;
+    if opacity.is_nan() {
+        log!("Warning: [(CALayer*){:?} setOpacity:NaN], using 1.0 instead", this);
+        opacity = 1.0;
+    }
+
     let old_opacity = env.objc.borrow::<CALayerHostObject>(this).opacity;
     if opacity == old_opacity {
         return;
@@ -446,6 +452,11 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow::<CALayerHostObject>(this).corner_radius
 }
 - (())setCornerRadius:(CGFloat)corner_radius {
+    let mut corner_radius = corner_radius;
+    if corner_radius.is_nan() {
+        log!("Warning: [(CALayer*){:?} setCornerRadius:NaN], using 0.0 instead", this);
+        corner_radius = 0.0;
+    }
     env.objc.borrow_mut::<CALayerHostObject>(this).corner_radius = corner_radius;
 }
 

@@ -211,7 +211,7 @@ impl CGAffineTransform {
         }
         Matrix::<3>::from(&Matrix::<2>::z_rotation(angle))
             .try_into()
-            .unwrap()
+            .unwrap_or(CGAffineTransformIdentity)
     }
     pub fn make_scale(x: CGFloat, y: CGFloat) -> Self {
         if x.is_nan() || y.is_nan() {
@@ -219,13 +219,15 @@ impl CGAffineTransform {
         }
         Matrix::<3>::from(&Matrix::<2>::scale_2d(x, y))
             .try_into()
-            .unwrap()
+            .unwrap_or(CGAffineTransformIdentity)
     }
     pub fn make_translation(x: CGFloat, y: CGFloat) -> Self {
         if x.is_nan() || y.is_nan() {
             return CGAffineTransformIdentity;
         }
-        Matrix::<3>::translate_2d(x, y).try_into().unwrap()
+        Matrix::<3>::translate_2d(x, y)
+            .try_into()
+            .unwrap_or(CGAffineTransformIdentity)
     }
     pub fn concat(self, other: Self) -> Self {
         if self.a.is_nan() || self.b.is_nan() || self.c.is_nan() || self.d.is_nan() || self.tx.is_nan() || self.ty.is_nan() ||
@@ -234,7 +236,7 @@ impl CGAffineTransform {
         }
         Matrix::<3>::multiply(&self.into(), &other.into())
             .try_into()
-            .unwrap()
+            .unwrap_or(CGAffineTransformIdentity)
     }
     pub fn rotate(self, angle: CGFloat) -> Self {
         Self::make_rotation(angle).concat(self)
