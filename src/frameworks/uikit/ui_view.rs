@@ -780,7 +780,8 @@ pub const CLASSES: ClassExports = objc_classes! {
     if bounds.size != old_bounds.size {
         let autoresizes = env.objc.borrow::<UIViewHostObject>(this).autoresizes_subviews;
         if autoresizes {
-            () = msg![env; this _autoresizeSubviewsWithOldSize:old_bounds.size];
+            let old_size = old_bounds.size;
+            () = msg![env; this _autoresizeSubviewsWithOldSize:old_size];
         }
         () = msg![env; this layoutSubviews];
     }
@@ -1064,7 +1065,8 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 - (())sizeToFit {
     let bounds: CGRect = msg![env; this bounds];
-    let size: CGSize = msg![env; this sizeThatFits:(bounds.size)];
+    let old_size = bounds.size;
+    let size: CGSize = msg![env; this sizeThatFits:old_size];
     () = msg![env; this setBounds:(CGRect {
         origin: bounds.origin,
         size

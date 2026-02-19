@@ -6,7 +6,7 @@
 //! `UIScreen`.
 
 use crate::frameworks::core_graphics::{CGFloat, CGPoint, CGRect, CGSize};
-use crate::objc::{id, msg, objc_classes, ClassExports, TrivialHostObject};
+use crate::objc::{autorelease, id, msg, msg_class, objc_classes, ClassExports, TrivialHostObject};
 
 #[derive(Default)]
 pub struct State {
@@ -44,14 +44,7 @@ pub const CLASSES: ClassExports = objc_classes! {
     // While Apple's documentation says this changes with the interface
     // orientation, https://useyourloaf.com/blog/uiscreen-bounds-in-ios-8/ says
     // ths wasn't the case prior to iOS 8.
-    // However, some Universal apps might expect it to reflect the actual size
-    // provided by the emulator.
     let (width, height) = env.window().size_unrotated_unscaled();
-    use crate::window::DeviceOrientation;
-    let (width, height) = match env.window().current_rotation() {
-        DeviceOrientation::Portrait => (width, height),
-        DeviceOrientation::LandscapeLeft | DeviceOrientation::LandscapeRight => (height, width),
-    };
     CGRect {
         origin: CGPoint { x: 0.0, y: 0.0 },
         size: CGSize { width: width as f32, height: height as f32 },
