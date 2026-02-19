@@ -93,7 +93,7 @@ pub const CLASSES: ClassExports = objc_classes! {
 
     // Act as if loading immediately completed (Spore Origins waits for this).
     State::get(env).pending_notifications.push_back(
-        (MPMoviePlayerContentPreloadDidFinishNotification, this)
+        (MPMoviePlayerContentPreloadDidFinishNotification, retain(env, this))
     );
 
     this
@@ -128,7 +128,7 @@ pub const CLASSES: ClassExports = objc_classes! {
     if env.bundle.bundle_identifier().starts_with("com.ea.spore") {
         log!("Applying game-specific hack for Spore Origins: sending MPMoviePlayerPlaybackDidFinishNotification again.");
         State::get(env).pending_notifications.push_back(
-            (MPMoviePlayerPlaybackDidFinishNotification, this)
+            (MPMoviePlayerPlaybackDidFinishNotification, retain(env, this))
         );
     }
     // As this is undocumented and we don't have real video playback yet, let's
@@ -154,7 +154,7 @@ pub const CLASSES: ClassExports = objc_classes! {
 
     // Act as if playback immediately completed (various apps wait for this).
     State::get(env).pending_notifications.push_back(
-        (MPMoviePlayerPlaybackDidFinishNotification, this)
+        (MPMoviePlayerPlaybackDidFinishNotification, retain(env, this))
     );
 }
 
@@ -201,5 +201,6 @@ pub(super) fn handle_players(env: &mut Environment) {
         let center: id = msg_class![env; NSNotificationCenter defaultCenter];
         // TODO: should there be some user info attached?
         let _: () = msg![env; center postNotificationName:name object:object];
+        release(env, object);
     }
 }
