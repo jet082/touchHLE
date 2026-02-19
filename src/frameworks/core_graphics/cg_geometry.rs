@@ -319,11 +319,15 @@ fn CGRectGetWidth(_env: &mut Environment, rect: CGRect) -> CGFloat {
 
 fn CGRectMake(
     _env: &mut Environment,
-    x: CGFloat,
-    y: CGFloat,
-    width: CGFloat,
-    height: CGFloat,
+    mut x: CGFloat,
+    mut y: CGFloat,
+    mut width: CGFloat,
+    mut height: CGFloat,
 ) -> CGRect {
+    if x.is_nan() { x = 0.0; }
+    if y.is_nan() { y = 0.0; }
+    if width.is_nan() { width = 0.0; }
+    if height.is_nan() { height = 0.0; }
     CGRect {
         origin: CGPoint { x, y },
         size: CGSize { width, height },

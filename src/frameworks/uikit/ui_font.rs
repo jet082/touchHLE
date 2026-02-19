@@ -181,6 +181,18 @@ pub const CLASSES: ClassExports = objc_classes! {
     if val.is_nan() { 0.0 } else { val }
 }
 
+- (CGFloat)pointSize {
+    env.objc.borrow::<UIFontHostObject>(this).size
+}
+
+- (CGFloat)lineHeight {
+    let ascender: CGFloat = msg![env; this ascender];
+    let descender: CGFloat = msg![env; this descender];
+    let leading: CGFloat = msg![env; this leading];
+    let res = ascender - descender + leading;
+    if res.is_nan() { 0.0 } else { res }
+}
+
 @end
 
 };

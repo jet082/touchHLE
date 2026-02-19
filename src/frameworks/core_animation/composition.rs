@@ -443,6 +443,9 @@ unsafe fn composite_layer_recursive(
         || host_obj.opacity.is_nan()
     {
         log!("Warning: skipping layer {:?} due to NaN geometry/opacity: bounds {:?}, position {:?}, opacity {}", layer, host_obj.bounds, host_obj.position, host_obj.opacity);
+        // Trace current PC to see where it comes from
+        use crate::cpu::Cpu;
+        log!("Guest state: PC=0x{:08x}, LR=0x{:08x}", env.cpu.regs()[Cpu::PC], env.cpu.regs()[Cpu::LR]);
         return;
     }
 

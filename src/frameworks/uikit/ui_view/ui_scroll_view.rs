@@ -166,6 +166,9 @@ pub const CLASSES: ClassExports = objc_classes! {
             offset,
             _animated
         );
+        // Trace current PC to see where it comes from
+        use crate::cpu::Cpu;
+        log!("Guest state: PC=0x{:08x}, LR=0x{:08x}", env.cpu.regs()[Cpu::PC], env.cpu.regs()[Cpu::LR]);
         if offset.x.is_nan() {
             offset.x = 0.0;
         }
@@ -209,6 +212,14 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow::<UIScrollViewHostObject>(this).content_inset
 }
 - (())setContentInset:(UIEdgeInsets)inset {
+    let mut inset = inset;
+    if inset.top.is_nan() || inset.left.is_nan() || inset.bottom.is_nan() || inset.right.is_nan() {
+        log!("Warning: [(UIScrollView*){:?} setContentInset:{:?}] contains NaN, using 0.0 instead", this, inset);
+        if inset.top.is_nan() { inset.top = 0.0; }
+        if inset.left.is_nan() { inset.left = 0.0; }
+        if inset.bottom.is_nan() { inset.bottom = 0.0; }
+        if inset.right.is_nan() { inset.right = 0.0; }
+    }
     env.objc.borrow_mut::<UIScrollViewHostObject>(this).content_inset = inset;
 }
 
@@ -216,6 +227,14 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow::<UIScrollViewHostObject>(this).scroll_indicator_insets
 }
 - (())setScrollIndicatorInsets:(UIEdgeInsets)inset {
+    let mut inset = inset;
+    if inset.top.is_nan() || inset.left.is_nan() || inset.bottom.is_nan() || inset.right.is_nan() {
+        log!("Warning: [(UIScrollView*){:?} setScrollIndicatorInsets:{:?}] contains NaN, using 0.0 instead", this, inset);
+        if inset.top.is_nan() { inset.top = 0.0; }
+        if inset.left.is_nan() { inset.left = 0.0; }
+        if inset.bottom.is_nan() { inset.bottom = 0.0; }
+        if inset.right.is_nan() { inset.right = 0.0; }
+    }
     env.objc.borrow_mut::<UIScrollViewHostObject>(this).scroll_indicator_insets = inset;
 }
 
