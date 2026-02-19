@@ -92,8 +92,9 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow_mut::<MPMoviePlayerControllerHostObject>(this).content_url = url;
 
     // Act as if loading immediately completed (Spore Origins waits for this).
+    let this_retained = retain(env, this);
     State::get(env).pending_notifications.push_back(
-        (MPMoviePlayerContentPreloadDidFinishNotification, retain(env, this))
+        (MPMoviePlayerContentPreloadDidFinishNotification, this_retained)
     );
 
     this
@@ -127,8 +128,9 @@ pub const CLASSES: ClassExports = objc_classes! {
     // the notification again.
     if env.bundle.bundle_identifier().starts_with("com.ea.spore") {
         log!("Applying game-specific hack for Spore Origins: sending MPMoviePlayerPlaybackDidFinishNotification again.");
+        let this_retained = retain(env, this);
         State::get(env).pending_notifications.push_back(
-            (MPMoviePlayerPlaybackDidFinishNotification, retain(env, this))
+            (MPMoviePlayerPlaybackDidFinishNotification, this_retained)
         );
     }
     // As this is undocumented and we don't have real video playback yet, let's
@@ -153,8 +155,9 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.framework_state.media_player.movie_player.active_player = Some(this);
 
     // Act as if playback immediately completed (various apps wait for this).
+    let this_retained = retain(env, this);
     State::get(env).pending_notifications.push_back(
-        (MPMoviePlayerPlaybackDidFinishNotification, retain(env, this))
+        (MPMoviePlayerPlaybackDidFinishNotification, this_retained)
     );
 }
 
