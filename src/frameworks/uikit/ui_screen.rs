@@ -74,7 +74,8 @@ pub const CLASSES: ClassExports = objc_classes! {
                 size: CGSize { width, height },
             };
             if !env.framework_state.uikit.ui_application.status_bar_hidden {
-                r.origin.x += 20.0;
+                // LandscapeLeft: Home button on right, status bar on top
+                // (which is right side of portrait).
                 r.size.width -= 20.0;
             }
             r
@@ -85,6 +86,9 @@ pub const CLASSES: ClassExports = objc_classes! {
                 size: CGSize { width, height },
             };
             if !env.framework_state.uikit.ui_application.status_bar_hidden {
+                // LandscapeRight: Home button on left, status bar on top
+                // (which is left side of portrait).
+                r.origin.x += 20.0;
                 r.size.width -= 20.0;
             }
             r

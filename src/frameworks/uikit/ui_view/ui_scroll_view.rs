@@ -357,19 +357,28 @@ pub const CLASSES: ClassExports = objc_classes! {
     let y = new_location.y;
     let x = new_location.x;
 
-    let delta_y = y - prev_y;
-    let delta_x = x - prev_x;
+    let mut delta_y = y - prev_y;
+    let mut delta_x = x - prev_x;
+    if delta_y.is_nan() { delta_y = 0.0; }
+    if delta_x.is_nan() { delta_x = 0.0; }
 
-    let offset: CGPoint = msg![env; this contentOffset];
-    let content_size: CGSize = msg![env; this contentSize];
+    let mut offset: CGPoint = msg![env; this contentOffset];
+    if offset.x.is_nan() { offset.x = 0.0; }
+    if offset.y.is_nan() { offset.y = 0.0; }
+
+    let mut content_size: CGSize = msg![env; this contentSize];
+    if content_size.width.is_nan() { content_size.width = 0.0; }
+    if content_size.height.is_nan() { content_size.height = 0.0; }
 
     // Very rudimentary scrolling.
     // We emulate sliding up to scroll down like on the real iPhone.
     let mut new_content_offset: CGPoint = CGPoint { x: offset.x - delta_x, y: offset.y - delta_y };
 
     // Update content offset within bounds
-    new_content_offset.y = new_content_offset.y.min(content_size.height - bounds.size.height).max(0.0);
-    new_content_offset.x = new_content_offset.x.min(content_size.width - bounds.size.width).max(0.0);
+    let max_y = (content_size.height - bounds.size.height).max(0.0);
+    let max_x = (content_size.width - bounds.size.width).max(0.0);
+    new_content_offset.y = new_content_offset.y.clamp(0.0, max_y);
+    new_content_offset.x = new_content_offset.x.clamp(0.0, max_x);
 
     // Trigger rerender only if required.
     log_dbg!("content offset: old {:?}, new {:?}", offset, new_content_offset);

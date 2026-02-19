@@ -335,10 +335,16 @@ pub const CLASSES: ClassExports = objc_classes! {
     // TODO: decode the various other UIView properties
 
     let key_ns_string = get_static_str(env, "UIBounds");
-    let bounds: CGRect = msg![env; coder decodeCGRectForKey:key_ns_string];
+    let mut bounds: CGRect = msg![env; coder decodeCGRectForKey:key_ns_string];
+    if bounds.origin.x.is_nan() { bounds.origin.x = 0.0; }
+    if bounds.origin.y.is_nan() { bounds.origin.y = 0.0; }
+    if bounds.size.width.is_nan() { bounds.size.width = 0.0; }
+    if bounds.size.height.is_nan() { bounds.size.height = 0.0; }
 
     let key_ns_string = get_static_str(env, "UICenter");
-    let center: CGPoint = msg![env; coder decodeCGPointForKey:key_ns_string];
+    let mut center: CGPoint = msg![env; coder decodeCGPointForKey:key_ns_string];
+    if center.x.is_nan() { center.x = 0.0; }
+    if center.y.is_nan() { center.y = 0.0; }
 
     let key_ns_string = get_static_str(env, "UIFrame");
     if msg![env; coder containsValueForKey:key_ns_string] {
@@ -773,6 +779,15 @@ pub const CLASSES: ClassExports = objc_classes! {
     msg![env; layer bounds]
 }
 - (())setBounds:(CGRect)bounds {
+    let mut bounds = bounds;
+    if bounds.origin.x.is_nan() || bounds.origin.y.is_nan() || bounds.size.width.is_nan() || bounds.size.height.is_nan() {
+        log!("Warning: [(UIView*){:?} setBounds:{:?}] contains NaN, using 0.0 instead", this, bounds);
+        if bounds.origin.x.is_nan() { bounds.origin.x = 0.0; }
+        if bounds.origin.y.is_nan() { bounds.origin.y = 0.0; }
+        if bounds.size.width.is_nan() { bounds.size.width = 0.0; }
+        if bounds.size.height.is_nan() { bounds.size.height = 0.0; }
+    }
+
     let old_bounds: CGRect = msg![env; this bounds];
     let layer = env.objc.borrow::<UIViewHostObject>(this).layer;
     () = msg![env; layer setBounds:bounds];
@@ -788,6 +803,10 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 
 - (())_autoresizeSubviewsWithOldSize:(CGSize)old_size {
+    let mut old_size = old_size;
+    if old_size.width.is_nan() { old_size.width = 0.0; }
+    if old_size.height.is_nan() { old_size.height = 0.0; }
+
     let new_size: CGSize = {
         let bounds: CGRect = msg![env; this bounds];
         bounds.size
@@ -865,15 +884,30 @@ pub const CLASSES: ClassExports = objc_classes! {
     msg![env; layer frame]
 }
 - (())setFrame:(CGRect)frame {
+    let mut frame = frame;
+    if frame.origin.x.is_nan() || frame.origin.y.is_nan() || frame.size.width.is_nan() || frame.size.height.is_nan() {
+        log!("Warning: [(UIView*){:?} setFrame:{:?}] contains NaN, using 0.0 instead", this, frame);
+        if frame.origin.x.is_nan() { frame.origin.x = 0.0; }
+        if frame.origin.y.is_nan() { frame.origin.y = 0.0; }
+        if frame.size.width.is_nan() { frame.size.width = 0.0; }
+        if frame.size.height.is_nan() { frame.size.height = 0.0; }
+    }
+
     let old_size: CGSize = {
         let bounds: CGRect = msg![env; this bounds];
-        bounds.size
+        let mut s = bounds.size;
+        if s.width.is_nan() { s.width = 0.0; }
+        if s.height.is_nan() { s.height = 0.0; }
+        s
     };
     let layer = env.objc.borrow::<UIViewHostObject>(this).layer;
     () = msg![env; layer setFrame:frame];
     let new_size: CGSize = {
         let bounds: CGRect = msg![env; this bounds];
-        bounds.size
+        let mut s = bounds.size;
+        if s.width.is_nan() { s.width = 0.0; }
+        if s.height.is_nan() { s.height = 0.0; }
+        s
     };
 
     if new_size != old_size {
