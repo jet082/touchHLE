@@ -145,6 +145,14 @@ pub const CLASSES: ClassExports = objc_classes! {
                            :(f32) c1y
                            :(f32) c2x
                            :(f32) c2y {
+    let mut c1x = c1x;
+    let mut c1y = c1y;
+    let mut c2x = c2x;
+    let mut c2y = c2y;
+    if c1x.is_nan() { c1x = 0.0; }
+    if c1y.is_nan() { c1y = 0.0; }
+    if c2x.is_nan() { c2x = 1.0; }
+    if c2y.is_nan() { c2y = 1.0; }
     let host_object = env.objc.borrow_mut::<CAMediaTimingFunctionHostObject>(this);
     host_object.control_points = [
         [c1x, c1y],

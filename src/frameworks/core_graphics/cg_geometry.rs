@@ -310,11 +310,13 @@ fn CGRectGetMaxY(_env: &mut Environment, rect: CGRect) -> CGFloat {
 }
 
 fn CGRectGetHeight(_env: &mut Environment, rect: CGRect) -> CGFloat {
-    rect.size.height
+    let res = rect.size.height;
+    if res.is_nan() { 0.0 } else { res }
 }
 
 fn CGRectGetWidth(_env: &mut Environment, rect: CGRect) -> CGFloat {
-    rect.size.width
+    let res = rect.size.width;
+    if res.is_nan() { 0.0 } else { res }
 }
 
 fn CGRectMake(

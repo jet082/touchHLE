@@ -185,7 +185,10 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 
 - (CGSize)contentSize {
-    env.objc.borrow::<UIScrollViewHostObject>(this).content_size
+    let mut res = env.objc.borrow::<UIScrollViewHostObject>(this).content_size;
+    if res.width.is_nan() { res.width = 0.0; }
+    if res.height.is_nan() { res.height = 0.0; }
+    res
 }
 - (())setContentSize:(CGSize)size {
     let mut size = size;

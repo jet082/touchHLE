@@ -37,11 +37,18 @@ fn NSLogv(
         arg,
     );
     // TODO: Should we include a timestamp, like the real NSLog?
+    let msg = String::from_utf8_lossy(&res);
+    if msg.contains("NaN") {
+        log!("Warning: NSLog contains NaN: {}", msg);
+        // Trace current PC to see where it comes from
+        use crate::cpu::Cpu;
+        log!("Guest state: PC=0x{:08x}, LR=0x{:08x}", env.cpu.regs()[Cpu::PC], env.cpu.regs()[Cpu::LR]);
+    }
     echo!(
         "{}[{}] {}",
         env.bundle.executable_path().file_name().unwrap(),
         env.current_thread,
-        String::from_utf8_lossy(&res)
+        msg
     );
 }
 

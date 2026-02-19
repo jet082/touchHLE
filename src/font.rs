@@ -177,7 +177,8 @@ impl Font {
 
         // This rounding is also to emulate pixel_bounding_box(), same caveat
         // applies.
-        line_x_max.ceil() - line_x_min.floor()
+        let res = line_x_max.ceil() - line_x_min.floor();
+        if res.is_nan() { 0.0 } else { res }
     }
 
     /// Break text into lines with known widths.
@@ -190,10 +191,11 @@ impl Font {
         let mut lines = Vec::new();
 
         for line in text.lines() {
-            let Some((wrap_width, wrap_mode)) = wrap else {
+            let Some((mut wrap_width, wrap_mode)) = wrap else {
                 lines.push((self.calculate_line_width(font_size, line), line));
                 continue;
             };
+            if wrap_width.is_nan() { wrap_width = f32::INFINITY; }
 
             let unwrapped_line = line;
 

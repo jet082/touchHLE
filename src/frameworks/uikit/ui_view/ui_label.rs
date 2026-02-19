@@ -318,13 +318,16 @@ pub const CLASSES: ClassExports = objc_classes! {
         return CGSize { width: 0.0, height: 0.0 };
     }
 
-    if number_of_lines == 1 {
+    let mut res: CGSize = if number_of_lines == 1 {
         msg![env; text sizeWithFont:font]
     } else {
         msg![env; text sizeWithFont:font
                   constrainedToSize:size
                       lineBreakMode:line_break_mode]
-    }
+    };
+    if res.width.is_nan() { res.width = 0.0; }
+    if res.height.is_nan() { res.height = 0.0; }
+    res
 }
 
 - (NSInteger)baselineAdjustment {

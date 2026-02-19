@@ -1098,7 +1098,47 @@ pub const CLASSES: ClassExports = objc_classes! {
          lineBreakMode:(UILineBreakMode)line_break_mode {
     // TODO: avoid copy
     let text = to_rust_string(env, this);
-    ui_font::size_with_font(env, font, &text, Some((size, line_break_mode)))
+    let mut res = ui_font::size_with_font(env, font, &text, Some((size, line_break_mode)));
+    if res.width.is_nan() { res.width = 0.0; }
+    if res.height.is_nan() { res.height = 0.0; }
+    res
+}
+
+- (CGSize)sizeWithFont:(id)font // UIFont*
+              forWidth:(CGFloat)width
+         lineBreakMode:(UILineBreakMode)line_break_mode {
+    let mut width = width;
+    if width.is_nan() { width = 0.0; }
+    msg![env; this sizeWithFont:font
+              constrainedToSize:(CGSize { width, height: f32::INFINITY })
+                  lineBreakMode:line_break_mode]
+}
+
+- (CGSize)sizeWithFont:(id)font // UIFont*
+           minFontSize:(CGFloat)_min
+        actualFontSize:(MutPtr<CGFloat>)actual
+              forWidth:(CGFloat)width
+         lineBreakMode:(UILineBreakMode)mode {
+    if !actual.is_null() {
+        let size: CGFloat = msg![env; font pointSize];
+        env.mem.write(actual, size);
+    }
+    msg![env; this sizeWithFont:font
+                       forWidth:width
+                  lineBreakMode:mode]
+}
+
+- (CGSize)sizeWithFont:(id)font // UIFont*
+     constrainedToSize:(CGSize)size
+         lineBreakMode:(UILineBreakMode)mode
+        actualFontSize:(MutPtr<CGFloat>)actual {
+    if !actual.is_null() {
+        let point_size: CGFloat = msg![env; font pointSize];
+        env.mem.write(actual, point_size);
+    }
+    msg![env; this sizeWithFont:font
+              constrainedToSize:size
+                  lineBreakMode:mode]
 }
 
 - (CGSize)drawAtPoint:(CGPoint)point

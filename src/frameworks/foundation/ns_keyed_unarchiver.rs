@@ -152,7 +152,7 @@ pub const CLASSES: ClassExports = objc_classes! {
 - (f64)decodeDoubleForKey:(id)key { // NSString *
     get_value_to_decode_for_key(env, this, key).map_or(
         0.0,
-        (|value| { let r = value.as_real().unwrap(); if r.is_nan() { 0.0 } else { r } })
+        |value| { let r = value.as_real().unwrap(); if r.is_nan() { 0.0 } else { r } }
     )
 }
 
@@ -160,7 +160,7 @@ pub const CLASSES: ClassExports = objc_classes! {
     // TODO: Check bounds, raise NSRangeException if it doesn't fit
     get_value_to_decode_for_key(env, this, key).map_or(
         0.0,
-        (|value| { let r = value.as_real().unwrap(); if r.is_nan() { 0.0 } else { r } })
+        |value| { let r = value.as_real().unwrap(); if r.is_nan() { 0.0 } else { r } }
     ) as f32
 }
 
