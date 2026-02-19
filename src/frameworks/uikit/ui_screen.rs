@@ -56,7 +56,7 @@ pub const CLASSES: ClassExports = objc_classes! {
     let (width, height) = env.window().device_family().portrait_size();
     let (width, height) = (width as f32, height as f32);
 
-    let mut rect = match env.window().current_rotation() {
+    let rect = match env.window().current_rotation() {
         DeviceOrientation::Portrait => {
             let mut r = CGRect {
                 origin: CGPoint { x: 0.0, y: 0.0 },
@@ -100,7 +100,8 @@ pub const CLASSES: ClassExports = objc_classes! {
 
 - (id)currentMode {
     let mode: id = msg_class![env; UIScreenMode alloc];
-    autorelease(env, msg![env; mode init])
+    let mode: id = msg![env; mode init];
+    autorelease(env, mode)
 }
 
 @end
