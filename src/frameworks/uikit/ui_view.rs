@@ -422,8 +422,12 @@ pub const CLASSES: ClassExports = objc_classes! {
         subview_count,
     );
 
-    () = msg![env; this setBounds:bounds];
-    () = msg![env; this setCenter:center];
+    if msg![env; coder containsValueForKey:(get_static_str(env, "UIFrame"))] {
+        // UIFrame already set above
+    } else {
+        () = msg![env; this setBounds:bounds];
+        () = msg![env; this setCenter:center];
+    }
     () = msg![env; this setHidden:hidden];
     () = msg![env; this setOpaque:opaque];
     () = msg![env; this setBackgroundColor:bg_color];
@@ -769,8 +773,82 @@ pub const CLASSES: ClassExports = objc_classes! {
     msg![env; layer bounds]
 }
 - (())setBounds:(CGRect)bounds {
+    let old_bounds: CGRect = msg![env; this bounds];
     let layer = env.objc.borrow::<UIViewHostObject>(this).layer;
-    msg![env; layer setBounds:bounds]
+    () = msg![env; layer setBounds:bounds];
+
+    if bounds.size != old_bounds.size {
+        let autoresizes = env.objc.borrow::<UIViewHostObject>(this).autoresizes_subviews;
+        if autoresizes {
+            () = msg![env; this _autoresizeSubviewsWithOldSize:old_bounds.size];
+        }
+        () = msg![env; this layoutSubviews];
+    }
+}
+
+- (())_autoresizeSubviewsWithOldSize:(CGSize)old_size {
+    let new_size: CGSize = {
+        let bounds: CGRect = msg![env; this bounds];
+        bounds.size
+    };
+
+    let subviews = env.objc.borrow::<UIViewHostObject>(this).subviews.clone();
+    for subview in subviews {
+        let mask = env.objc.borrow::<UIViewHostObject>(subview).autoresizing_mask;
+        if mask == 0 {
+            continue;
+        }
+
+        let mut frame: CGRect = msg![env; subview frame];
+        let old_frame = frame;
+
+        let dw = new_size.width - old_size.width;
+        let dh = new_size.height - old_size.height;
+
+        // Horizontal autoresizing
+        let h_bits = mask & 0x7; // LeftMargin | Width | RightMargin
+        if h_bits != 0 {
+            let mut total_parts: f32 = 0.0;
+            if mask & 1 != 0 { total_parts += old_frame.origin.x; }
+            if mask & 2 != 0 { total_parts += old_frame.size.width; }
+            if mask & 4 != 0 {
+                total_parts += old_size.width - (old_frame.origin.x + old_frame.size.width);
+            }
+
+            if total_parts > 0.0 {
+                if mask & 1 != 0 {
+                    frame.origin.x += dw * (old_frame.origin.x / total_parts);
+                }
+                if mask & 2 != 0 {
+                    frame.size.width += dw * (old_frame.size.width / total_parts);
+                }
+            }
+        }
+
+        // Vertical autoresizing
+        let v_bits = (mask >> 3) & 0x7; // TopMargin | Height | BottomMargin
+        if v_bits != 0 {
+            let mut total_parts: f32 = 0.0;
+            if mask & 8 != 0 { total_parts += old_frame.origin.y; }
+            if mask & 16 != 0 { total_parts += old_frame.size.height; }
+            if mask & 32 != 0 {
+                total_parts += old_size.height - (old_frame.origin.y + old_frame.size.height);
+            }
+
+            if total_parts > 0.0 {
+                if mask & 8 != 0 {
+                    frame.origin.y += dh * (old_frame.origin.y / total_parts);
+                }
+                if mask & 16 != 0 {
+                    frame.size.height += dh * (old_frame.size.height / total_parts);
+                }
+            }
+        }
+
+        if frame != old_frame {
+            () = msg![env; subview setFrame:frame];
+        }
+    }
 }
 - (CGPoint)center {
     // FIXME: what happens if [layer anchorPoint] isn't (0.5, 0.5)?
@@ -786,8 +864,24 @@ pub const CLASSES: ClassExports = objc_classes! {
     msg![env; layer frame]
 }
 - (())setFrame:(CGRect)frame {
+    let old_size: CGSize = {
+        let bounds: CGRect = msg![env; this bounds];
+        bounds.size
+    };
     let layer = env.objc.borrow::<UIViewHostObject>(this).layer;
-    msg![env; layer setFrame:frame]
+    () = msg![env; layer setFrame:frame];
+    let new_size: CGSize = {
+        let bounds: CGRect = msg![env; this bounds];
+        bounds.size
+    };
+
+    if new_size != old_size {
+        let autoresizes = env.objc.borrow::<UIViewHostObject>(this).autoresizes_subviews;
+        if autoresizes {
+            () = msg![env; this _autoresizeSubviewsWithOldSize:old_size];
+        }
+        () = msg![env; this layoutSubviews];
+    }
 }
 - (CGAffineTransform)transform {
     let layer = env.objc.borrow::<UIViewHostObject>(this).layer;
@@ -960,9 +1054,10 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow_mut::<UIViewHostObject>(this).autoresizes_subviews = enabled;
 }
 
-- (CGSize)sizeThatFits:(CGSize)size {
-    // default implementation, subclasses can override
-    let mut size = size;
+- (CGSize)sizeThatFits:(CGSize)_size {
+    // The default implementation of this method returns the current size of the view.
+    let bounds: CGRect = msg![env; this bounds];
+    let mut size = bounds.size;
     if size.width.is_nan() { size.width = 0.0; }
     if size.height.is_nan() { size.height = 0.0; }
     size
