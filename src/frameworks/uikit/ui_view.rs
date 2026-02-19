@@ -27,7 +27,7 @@ use crate::frameworks::foundation::{ns_array, NSInteger, NSTimeInterval, NSUInte
 use crate::mem::MutVoidPtr;
 use crate::objc::{
     autorelease, id, msg, msg_class, msg_send, nil, objc_classes, release, retain,
-    todo_objc_setter, Class, ClassExports, HostObject, NSZonePtr, ObjC, SEL,
+    Class, ClassExports, HostObject, NSZonePtr, ObjC, SEL,
 };
 use crate::Environment;
 
@@ -75,6 +75,7 @@ pub(super) struct UIViewHostObject {
     multiple_touch_enabled: bool,
     autoresizes_subviews: bool,
     autoresizing_mask: NSUInteger,
+    content_mode: NSInteger,
 }
 impl HostObject for UIViewHostObject {}
 impl Default for UIViewHostObject {
@@ -92,6 +93,7 @@ impl Default for UIViewHostObject {
             multiple_touch_enabled: false,
             autoresizes_subviews: true,
             autoresizing_mask: 0, // UIViewAutoresizingNone
+            content_mode: 0,      // UIViewContentModeScaleToFill
         }
     }
 }
@@ -658,7 +660,13 @@ pub const CLASSES: ClassExports = objc_classes! {
         superview,
         subviews,
         view_controller,
-        ..
+        tag: _,
+        clears_context_before_drawing: _,
+        user_interaction_enabled: _,
+        multiple_touch_enabled: _,
+        autoresizes_subviews: _,
+        autoresizing_mask: _,
+        content_mode: _,
     } = std::mem::take(env.objc.borrow_mut(this));
 
     release(env, layer);
@@ -790,8 +798,11 @@ pub const CLASSES: ClassExports = objc_classes! {
     msg![env; layer setAffineTransform:transform]
 }
 
+- (NSInteger)contentMode {
+    env.objc.borrow::<UIViewHostObject>(this).content_mode
+}
 - (())setContentMode:(NSInteger)content_mode { // should be UIViewContentMode
-    todo_objc_setter!(this, content_mode);
+    env.objc.borrow_mut::<UIViewHostObject>(this).content_mode = content_mode;
 }
 
 - (())setContentStretch:(CGRect)rect {

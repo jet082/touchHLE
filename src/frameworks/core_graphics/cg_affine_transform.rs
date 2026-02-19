@@ -270,14 +270,30 @@ impl CGAffineTransform {
     }
 
     pub fn apply_to_point(self, point: CGPoint) -> CGPoint {
+        let mut x_in = point.x;
+        let mut y_in = point.y;
+        if x_in.is_nan() { x_in = 0.0; }
+        if y_in.is_nan() { y_in = 0.0; }
         // z = 1 makes the translation (in homogenous co-ordinates) be applied
-        let [x, y, _] = Matrix::<3>::transform(&self.into(), [point.x, point.y, 1.0]);
+        let [x, y, _] = Matrix::<3>::transform(&self.into(), [x_in, y_in, 1.0]);
+        let mut x = x;
+        let mut y = y;
+        if x.is_nan() { x = 0.0; }
+        if y.is_nan() { y = 0.0; }
         CGPoint { x, y }
     }
     pub fn apply_to_size(self, size: CGSize) -> CGSize {
+        let mut w_in = size.width;
+        let mut h_in = size.height;
+        if w_in.is_nan() { w_in = 0.0; }
+        if h_in.is_nan() { h_in = 0.0; }
         // z = 0 makes the translation (in homogenous co-ordinates) be ignored
         let [width, height, _] =
-            Matrix::<3>::transform(&self.into(), [size.width, size.height, 0.0]);
+            Matrix::<3>::transform(&self.into(), [w_in, h_in, 0.0]);
+        let mut width = width;
+        let mut height = height;
+        if width.is_nan() { width = 0.0; }
+        if height.is_nan() { height = 0.0; }
         CGSize { width, height }
     }
     pub fn apply_to_rect(self, rect: CGRect) -> CGRect {

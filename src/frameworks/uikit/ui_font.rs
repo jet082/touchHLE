@@ -255,7 +255,10 @@ pub fn size_with_font(
 
     let wrap = constrained.map(|(size, ui_mode)| (size.width, convert_line_break_mode(ui_mode)));
 
-    let (width, height) = font.calculate_text_size(host_object.size, text, wrap);
+    let (mut width, mut height) = font.calculate_text_size(host_object.size, text, wrap);
+
+    if width.is_nan() { width = 0.0; }
+    if height.is_nan() { height = 0.0; }
 
     CGSize { width, height }
 }
@@ -335,8 +338,11 @@ pub fn draw_at_point(
     let width_and_line_break_mode =
         width_and_line_break_mode.map(|(width, ui_mode)| (width, convert_line_break_mode(ui_mode)));
     let clip_x = width_and_line_break_mode.map(|(width, _)| point.x..(point.x + width));
-    let (width, height) =
+    let (mut width, mut height) =
         font.calculate_text_size(host_object.size, text, width_and_line_break_mode);
+
+    if width.is_nan() { width = 0.0; }
+    if height.is_nan() { height = 0.0; }
 
     let mut drawer = CGBitmapContextDrawer::new(&env.objc, &mut env.mem, context);
     let fill_color = drawer.rgb_fill_color();
@@ -408,6 +414,10 @@ pub fn draw_in_rect(
             )
         },
     );
+
+    let mut text_size = text_size;
+    if text_size.width.is_nan() { text_size.width = 0.0; }
+    if text_size.height.is_nan() { text_size.height = 0.0; }
 
     text_size
 }
