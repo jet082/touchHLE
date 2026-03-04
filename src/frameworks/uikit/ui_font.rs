@@ -105,7 +105,7 @@ pub const CLASSES: ClassExports = objc_classes! {
 
 + (id)systemFontOfSize:(CGFloat)size {
     let host_object = UIFontHostObject {
-        size,
+        size: if size > 0.0 { size } else { 17.0 },
         kind: FontKind::SansRegular,
     };
     let new = env.objc.alloc_object(this, Box::new(host_object), &mut env.mem);
@@ -113,7 +113,7 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 + (id)boldSystemFontOfSize:(CGFloat)size {
     let host_object = UIFontHostObject {
-        size,
+        size: if size > 0.0 { size } else { 17.0 },
         kind: FontKind::SansBold,
     };
     let new = env.objc.alloc_object(this, Box::new(host_object), &mut env.mem);
@@ -121,7 +121,7 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 + (id)italicSystemFontOfSize:(CGFloat)size {
     let host_object = UIFontHostObject {
-        size,
+        size: if size > 0.0 { size } else { 17.0 },
         kind: FontKind::SansItalic,
     };
     let new = env.objc.alloc_object(this, Box::new(host_object), &mut env.mem);
@@ -135,7 +135,7 @@ pub const CLASSES: ClassExports = objc_classes! {
             log!("No replacement found for font {}. Using system font instead.", font_name);
             FontKind::SansRegular
         }),
-        size: fontSize,
+        size: if fontSize > 0.0 { fontSize } else { 17.0 },
     };
     let new = env.objc.alloc_object(this, Box::new(host_object), &mut env.mem);
     autorelease(env, new)
@@ -165,17 +165,32 @@ pub const CLASSES: ClassExports = objc_classes! {
 - (CGFloat)ascender {
     let host_object = env.objc.borrow::<UIFontHostObject>(this);
     let font = env.framework_state.uikit.ui_font.get_font_by_kind(host_object.kind);
-    font.ascent(host_object.size)
+    let val = font.ascent(host_object.size);
+    if val.is_nan() { 0.0 } else { val }
 }
 - (CGFloat)descender {
     let host_object = env.objc.borrow::<UIFontHostObject>(this);
     let font = env.framework_state.uikit.ui_font.get_font_by_kind(host_object.kind);
-    font.descent(host_object.size)
+    let val = font.descent(host_object.size);
+    if val.is_nan() { 0.0 } else { val }
 }
 - (CGFloat)leading {
     let host_object = env.objc.borrow::<UIFontHostObject>(this);
     let font = env.framework_state.uikit.ui_font.get_font_by_kind(host_object.kind);
-    font.line_gap(host_object.size)
+    let val = font.line_gap(host_object.size);
+    if val.is_nan() { 0.0 } else { val }
+}
+
+- (CGFloat)pointSize {
+    env.objc.borrow::<UIFontHostObject>(this).size
+}
+
+- (CGFloat)lineHeight {
+    let ascender: CGFloat = msg![env; this ascender];
+    let descender: CGFloat = msg![env; this descender];
+    let leading: CGFloat = msg![env; this leading];
+    let res = ascender - descender + leading;
+    if res.is_nan() { 0.0 } else { res }
 }
 
 @end
@@ -252,7 +267,10 @@ pub fn size_with_font(
 
     let wrap = constrained.map(|(size, ui_mode)| (size.width, convert_line_break_mode(ui_mode)));
 
-    let (width, height) = font.calculate_text_size(host_object.size, text, wrap);
+    let (mut width, mut height) = font.calculate_text_size(host_object.size, text, wrap);
+
+    if width.is_nan() { width = 0.0; }
+    if height.is_nan() { height = 0.0; }
 
     CGSize { width, height }
 }
@@ -332,8 +350,11 @@ pub fn draw_at_point(
     let width_and_line_break_mode =
         width_and_line_break_mode.map(|(width, ui_mode)| (width, convert_line_break_mode(ui_mode)));
     let clip_x = width_and_line_break_mode.map(|(width, _)| point.x..(point.x + width));
-    let (width, height) =
+    let (mut width, mut height) =
         font.calculate_text_size(host_object.size, text, width_and_line_break_mode);
+
+    if width.is_nan() { width = 0.0; }
+    if height.is_nan() { height = 0.0; }
 
     let mut drawer = CGBitmapContextDrawer::new(&env.objc, &mut env.mem, context);
     let fill_color = drawer.rgb_fill_color();
@@ -406,6 +427,10 @@ pub fn draw_in_rect(
         },
     );
 
+    let mut text_size = text_size;
+    if text_size.width.is_nan() { text_size.width = 0.0; }
+    if text_size.height.is_nan() { text_size.height = 0.0; }
+
     text_size
 }
 
@@ -428,8 +453,8 @@ fn get_equivalent_font(system_font: &str) -> Option<FontKind> {
         "STHeitiTC-Light" => None,
         "STHeitiTC-Medium" => None,
         // Font Family: Hiragino Kaku Gothic ProN
-        "HiraKakuProN-W6" => None,
-        "HiraKakuProN-W3" => None,
+        "HiraKakuProN-W6" => Some(FontKind::SansRegular),
+        "HiraKakuProN-W3" => Some(FontKind::SansRegular),
         // Font Family: Courier New
         "CourierNewPS-BoldMT" => Some(FontKind::MonoRegular),
         "CourierNewPS-ItalicMT" => Some(FontKind::MonoBold),
@@ -446,15 +471,15 @@ fn get_equivalent_font(system_font: &str) -> Option<FontKind> {
         "AmericanTypewriter" => Some(FontKind::MonoRegular),
         "AmericanTypewriter-Bold" => Some(FontKind::MonoBold),
         // Font Family: Helvetica
-        "Helvetica-Oblique" => None,
-        "Helvetica-BoldOblique" => None,
-        "Helvetica" => None,
-        "Helvetica-Bold" => None,
+        "Helvetica-Oblique" => Some(FontKind::SansItalic),
+        "Helvetica-BoldOblique" => Some(FontKind::SansBoldItalic),
+        "Helvetica" => Some(FontKind::SansRegular),
+        "Helvetica-Bold" => Some(FontKind::SansBold),
         // Font Family: Marker Felt
         "MarkerFelt-Thin" => None,
         // Font Family: Helvetica Neue
-        "HelveticaNeue" => None,
-        "HelveticaNeue-Bold" => None,
+        "HelveticaNeue" => Some(FontKind::SansRegular),
+        "HelveticaNeue-Bold" => Some(FontKind::SansBold),
         // Font Family: DB LCD Temp
         "DBLCDTempBlack" => None,
         // Font Family: Verdana

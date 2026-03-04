@@ -318,13 +318,16 @@ pub const CLASSES: ClassExports = objc_classes! {
         return CGSize { width: 0.0, height: 0.0 };
     }
 
-    if number_of_lines == 1 {
+    let mut res: CGSize = if number_of_lines == 1 {
         msg![env; text sizeWithFont:font]
     } else {
         msg![env; text sizeWithFont:font
                   constrainedToSize:size
                       lineBreakMode:line_break_mode]
-    }
+    };
+    if res.width.is_nan() { res.width = 0.0; }
+    if res.height.is_nan() { res.height = 0.0; }
+    res
 }
 
 - (NSInteger)baselineAdjustment {
@@ -374,16 +377,19 @@ pub const CLASSES: ClassExports = objc_classes! {
     // (note the log message in setNumberOfLines:)
     let single_line = number_of_lines == 1;
 
-    let calculated_size: CGSize = if single_line {
+    let mut calculated_size: CGSize = if single_line {
         msg![env; text sizeWithFont:font]
     } else {
         msg![env; text sizeWithFont:font
                   constrainedToSize:(bounds.size)
                       lineBreakMode:line_break_mode]
     };
+    if calculated_size.width.is_nan() { calculated_size.width = 0.0; }
+    if calculated_size.height.is_nan() { calculated_size.height = 0.0; }
 
     // UILabel always vertically centers text
-    let origin_y = bounds.origin.y + (bounds.size.height - calculated_size.height) / 2.0;
+    let mut origin_y = bounds.origin.y + (bounds.size.height - calculated_size.height) / 2.0;
+    if origin_y.is_nan() { origin_y = bounds.origin.y; }
 
     let rect = CGRect {
         origin: CGPoint {

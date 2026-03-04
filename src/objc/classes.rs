@@ -432,14 +432,14 @@ fn substitute_classes(
     // Naturally it makes a lot of use of UIKit and networking in ways we
     // don't support yet. This isn't "ad blocking" because ads no longer work
     // on real devices anyway :)
-    if !(name.starts_with("AdMob")
-        || name.starts_with("AltAds")
-        || name.starts_with("Mobclix")
-        || name.starts_with("FB") // Facebook
-        || name.starts_with("Flurry")
-        || name.starts_with("OpenFeint")
-        || name.starts_with("Tapjoy"))
-    {
+    let mut should_substitute = false;
+    if name.starts_with("AdMob") || name.starts_with("AltAds") || name.starts_with("Mobclix") { should_substitute = true; }
+    if name.starts_with("FBRequest") || name.starts_with("FBSession") || name.starts_with("FBGraph") || name.starts_with("FBDialog") { should_substitute = true; }
+    if name.starts_with("FBAppCall") || name.starts_with("FBAppEvents") || name.starts_with("FBWeb") || name.starts_with("FBLogin") || name.starts_with("FBSDK") { should_substitute = true; }
+    if name.starts_with("Flurry") || name.starts_with("OpenFeint") || name.starts_with("Tapjoy") { should_substitute = true; }
+    if name == "FB" { should_substitute = true; } // Some apps might have just "FB"
+
+    if !should_substitute {
         return None;
     }
 

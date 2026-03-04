@@ -116,6 +116,8 @@ impl Options {
 
         if arg == "--fullscreen" {
             self.fullscreen = true;
+        } else if arg == "--portrait" {
+            self.initial_orientation = DeviceOrientation::Portrait;
         } else if arg == "--landscape-left" {
             self.initial_orientation = DeviceOrientation::LandscapeLeft;
         } else if arg == "--landscape-right" {

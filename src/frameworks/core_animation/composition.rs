@@ -53,7 +53,18 @@ struct MiscGlObjects {
 }
 
 unsafe fn load_matrix(gles: &mut dyn GLES, matrix: Matrix<4>) {
-    gles.LoadMatrixf(matrix.columns().as_ptr() as *const _);
+    let columns = matrix.columns();
+    for col in columns {
+        for &val in col {
+            if val.is_nan() {
+                log!("Warning: load_matrix contains NaN: {:?}", matrix);
+                // Return to avoid loading NaN into GL, or load identity
+                gles.LoadIdentity();
+                return;
+            }
+        }
+    }
+    gles.LoadMatrixf(columns.as_ptr() as *const _);
 }
 
 /// For use by `NSRunLoop`: call this 60 times per second. Composites the app's
@@ -420,6 +431,21 @@ unsafe fn composite_layer_recursive(
     let host_obj = animation_state.create_presentation_layer(env, layer);
 
     if host_obj.hidden {
+        return;
+    }
+
+    if host_obj.bounds.origin.x.is_nan()
+        || host_obj.bounds.origin.y.is_nan()
+        || host_obj.bounds.size.width.is_nan()
+        || host_obj.bounds.size.height.is_nan()
+        || host_obj.position.x.is_nan()
+        || host_obj.position.y.is_nan()
+        || host_obj.opacity.is_nan()
+    {
+        log!("Warning: skipping layer {:?} due to NaN geometry/opacity: bounds {:?}, position {:?}, opacity {}", layer, host_obj.bounds, host_obj.position, host_obj.opacity);
+        // Trace current PC to see where it comes from
+        use crate::cpu::Cpu;
+        log!("Guest state: PC=0x{:08x}, LR=0x{:08x}", env.cpu.regs()[Cpu::PC], env.cpu.regs()[Cpu::LR]);
         return;
     }
 

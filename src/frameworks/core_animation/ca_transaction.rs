@@ -206,7 +206,8 @@ pub const CLASSES: ClassExports = objc_classes! {
     log_dbg!("[CATransaction setValue:{:?} forKey:{:?} ({})]", value, key, key_string);
     match &*key_string  {
         kCATransactionAnimationDuration => {
-            let value: CFTimeInterval = msg![env; value doubleValue];
+            let mut value: CFTimeInterval = msg![env; value doubleValue];
+            if value.is_nan() { value = 0.25; }
             State::get_current_transaction_mut(env).unwrap().animation_duration = value;
         },
         kCATransactionDisableActions => {

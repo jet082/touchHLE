@@ -167,6 +167,8 @@ pub fn main<T: Iterator<Item = String>>(mut args: T) -> Result<(), String> {
         // command line options take precedence over file options.
         } else if options.parse_argument(&arg)? {
             option_args.push(arg);
+        } else if arg.starts_with("--") {
+            return Err(format!("Unknown option: {arg:?}"));
         } else if bundle_path.is_none() {
             bundle_path = Some(PathBuf::from(arg));
         } else {

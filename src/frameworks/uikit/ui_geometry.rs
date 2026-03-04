@@ -15,21 +15,32 @@ use crate::Environment;
 // well-formed.
 pub fn CGPointFromString(env: &mut Environment, string: id) -> CGPoint {
     // TODO: avoid copy
-    ns_string::to_rust_string(env, string)
+    let mut res: CGPoint = ns_string::to_rust_string(env, string)
         .parse()
-        .unwrap_or_default()
+        .unwrap_or_default();
+    if res.x.is_nan() { res.x = 0.0; }
+    if res.y.is_nan() { res.y = 0.0; }
+    res
 }
 pub fn CGSizeFromString(env: &mut Environment, string: id) -> CGSize {
     // TODO: avoid copy
-    ns_string::to_rust_string(env, string)
+    let mut res: CGSize = ns_string::to_rust_string(env, string)
         .parse()
-        .unwrap_or_default()
+        .unwrap_or_default();
+    if res.width.is_nan() { res.width = 0.0; }
+    if res.height.is_nan() { res.height = 0.0; }
+    res
 }
 pub fn CGRectFromString(env: &mut Environment, string: id) -> CGRect {
     // TODO: avoid copy
-    ns_string::to_rust_string(env, string)
+    let mut res: CGRect = ns_string::to_rust_string(env, string)
         .parse()
-        .unwrap_or_default()
+        .unwrap_or_default();
+    if res.origin.x.is_nan() { res.origin.x = 0.0; }
+    if res.origin.y.is_nan() { res.origin.y = 0.0; }
+    if res.size.width.is_nan() { res.size.width = 0.0; }
+    if res.size.height.is_nan() { res.size.height = 0.0; }
+    res
 }
 
 pub fn NSStringFromCGPoint(env: &mut Environment, point: CGPoint) -> id {
@@ -47,9 +58,13 @@ pub fn NSStringFromCGRect(env: &mut Environment, rect: CGRect) -> id {
 
 pub fn CGAffineTransformFromString(env: &mut Environment, string: id) -> CGAffineTransform {
     // TODO: avoid copy
-    ns_string::to_rust_string(env, string)
+    let mut res = ns_string::to_rust_string(env, string)
         .parse()
-        .unwrap_or(crate::frameworks::core_graphics::cg_affine_transform::CGAffineTransformIdentity)
+        .unwrap_or(crate::frameworks::core_graphics::cg_affine_transform::CGAffineTransformIdentity);
+    if res.a.is_nan() || res.b.is_nan() || res.c.is_nan() || res.d.is_nan() || res.tx.is_nan() || res.ty.is_nan() {
+        res = crate::frameworks::core_graphics::cg_affine_transform::CGAffineTransformIdentity;
+    }
+    res
 }
 
 pub fn NSStringFromCGAffineTransform(env: &mut Environment, transform: CGAffineTransform) -> id {

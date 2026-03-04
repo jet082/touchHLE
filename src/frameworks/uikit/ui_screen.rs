@@ -6,7 +6,7 @@
 //! `UIScreen`.
 
 use crate::frameworks::core_graphics::{CGFloat, CGPoint, CGRect, CGSize};
-use crate::objc::{id, msg, objc_classes, ClassExports, TrivialHostObject};
+use crate::objc::{autorelease, id, msg, msg_class, objc_classes, ClassExports, TrivialHostObject};
 
 #[derive(Default)]
 pub struct State {
@@ -44,7 +44,7 @@ pub const CLASSES: ClassExports = objc_classes! {
     // While Apple's documentation says this changes with the interface
     // orientation, https://useyourloaf.com/blog/uiscreen-bounds-in-ios-8/ says
     // ths wasn't the case prior to iOS 8.
-    let (width, height) = env.window().device_family().portrait_size();
+    let (width, height) = env.window().size_unrotated_unscaled();
     CGRect {
         origin: CGPoint { x: 0.0, y: 0.0 },
         size: CGSize { width: width as f32, height: height as f32 },
@@ -52,18 +52,72 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 
 - (CGRect)applicationFrame {
-    // FIXME: Does this change depending on the status bar orientation?
-    let mut bounds: CGRect = msg![env; this bounds];
-    const STATUS_BAR_HEIGHT: f32 = 20.0;
-    if !env.framework_state.uikit.ui_application.status_bar_hidden {
-        bounds.origin.y += STATUS_BAR_HEIGHT;
-        bounds.size.height -= STATUS_BAR_HEIGHT;
-    }
-    bounds
+    use crate::window::DeviceOrientation;
+    let (width, height) = env.window().device_family().portrait_size();
+    let (width, height) = (width as f32, height as f32);
+
+    let rect = match env.window().current_rotation() {
+        DeviceOrientation::Portrait => {
+            let mut r = CGRect {
+                origin: CGPoint { x: 0.0, y: 0.0 },
+                size: CGSize { width, height },
+            };
+            if !env.framework_state.uikit.ui_application.status_bar_hidden {
+                r.origin.y += 20.0;
+                r.size.height -= 20.0;
+            }
+            r
+        }
+        DeviceOrientation::LandscapeLeft => {
+            let mut r = CGRect {
+                origin: CGPoint { x: 0.0, y: 0.0 },
+                size: CGSize { width, height },
+            };
+            if !env.framework_state.uikit.ui_application.status_bar_hidden {
+                // LandscapeLeft: Home button on right, status bar on top
+                // (which is left side of portrait).
+                r.origin.x += 20.0;
+                r.size.width -= 20.0;
+            }
+            r
+        }
+        DeviceOrientation::LandscapeRight => {
+            let mut r = CGRect {
+                origin: CGPoint { x: 0.0, y: 0.0 },
+                size: CGSize { width, height },
+            };
+            if !env.framework_state.uikit.ui_application.status_bar_hidden {
+                // LandscapeRight: Home button on left, status bar on top
+                // (which is right side of portrait).
+                r.size.width -= 20.0;
+            }
+            r
+        }
+    };
+    rect
 }
 
 - (CGFloat)scale {
     // TODO: support retina
+    1.0
+}
+
+- (id)currentMode {
+    let mode: id = msg_class![env; UIScreenMode alloc];
+    let mode: id = msg![env; mode init];
+    autorelease(env, mode)
+}
+
+@end
+
+@implementation UIScreenMode: NSObject
+
+- (CGSize)size {
+    let (width, height) = env.window().device_family().portrait_size();
+    CGSize { width: width as f32, height: height as f32 }
+}
+
+- (CGFloat)pixelAspectRatio {
     1.0
 }
 

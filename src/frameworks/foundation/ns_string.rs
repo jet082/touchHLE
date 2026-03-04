@@ -105,20 +105,31 @@ impl StringHostObject {
 
         match encoding {
             NSASCIIStringEncoding => {
-                assert!(bytes.iter().all(|byte| byte.is_ascii()));
-                // Safety: guaranteed by above assertion
-                let string = unsafe { String::from_utf8_unchecked(bytes.into_owned()) };
+                let string = if bytes.iter().all(|byte| byte.is_ascii()) {
+                    // Safety: guaranteed by above check
+                    unsafe { String::from_utf8_unchecked(bytes.into_owned()) }
+                } else {
+                    log!("Warning: invalid ASCII string, using empty string instead");
+                    String::new()
+                };
                 StringHostObject::Utf8(Cow::Owned(string))
             }
             NSMacOSRomanStringEncoding | NSISOLatin1StringEncoding => {
                 // TODO: support non ASCII symbols
-                assert!(bytes.iter().all(|byte| byte.is_ascii()));
-                // Safety: guaranteed by above assertion
-                let string = unsafe { String::from_utf8_unchecked(bytes.into_owned()) };
+                let string = if bytes.iter().all(|byte| byte.is_ascii()) {
+                    // Safety: guaranteed by above check
+                    unsafe { String::from_utf8_unchecked(bytes.into_owned()) }
+                } else {
+                    log!("Warning: invalid MacRoman/ISOLatin1 string, using empty string instead");
+                    String::new()
+                };
                 StringHostObject::Utf8(Cow::Owned(string))
             }
             NSUTF8StringEncoding => {
-                let string = String::from_utf8(bytes.into_owned()).unwrap();
+                let string = String::from_utf8(bytes.into_owned()).unwrap_or_else(|e| {
+                    log!("Warning: invalid UTF-8 string: {}, using empty string instead", e);
+                    String::new()
+                });
                 StringHostObject::Utf8(Cow::Owned(string))
             }
             NSWindowsCP1252StringEncoding => {
@@ -1087,7 +1098,47 @@ pub const CLASSES: ClassExports = objc_classes! {
          lineBreakMode:(UILineBreakMode)line_break_mode {
     // TODO: avoid copy
     let text = to_rust_string(env, this);
-    ui_font::size_with_font(env, font, &text, Some((size, line_break_mode)))
+    let mut res = ui_font::size_with_font(env, font, &text, Some((size, line_break_mode)));
+    if res.width.is_nan() { res.width = 0.0; }
+    if res.height.is_nan() { res.height = 0.0; }
+    res
+}
+
+- (CGSize)sizeWithFont:(id)font // UIFont*
+              forWidth:(CGFloat)width
+         lineBreakMode:(UILineBreakMode)line_break_mode {
+    let mut width = width;
+    if width.is_nan() { width = 0.0; }
+    msg![env; this sizeWithFont:font
+              constrainedToSize:(CGSize { width, height: f32::INFINITY })
+                  lineBreakMode:line_break_mode]
+}
+
+- (CGSize)sizeWithFont:(id)font // UIFont*
+           minFontSize:(CGFloat)_min
+        actualFontSize:(MutPtr<CGFloat>)actual
+              forWidth:(CGFloat)width
+         lineBreakMode:(UILineBreakMode)mode {
+    if !actual.is_null() {
+        let size: CGFloat = msg![env; font pointSize];
+        env.mem.write(actual, size);
+    }
+    msg![env; this sizeWithFont:font
+                       forWidth:width
+                  lineBreakMode:mode]
+}
+
+- (CGSize)sizeWithFont:(id)font // UIFont*
+     constrainedToSize:(CGSize)size
+         lineBreakMode:(UILineBreakMode)mode
+        actualFontSize:(MutPtr<CGFloat>)actual {
+    if !actual.is_null() {
+        let point_size: CGFloat = msg![env; font pointSize];
+        env.mem.write(actual, point_size);
+    }
+    msg![env; this sizeWithFont:font
+              constrainedToSize:size
+                  lineBreakMode:mode]
 }
 
 - (CGSize)drawAtPoint:(CGPoint)point
@@ -1716,11 +1767,24 @@ pub fn from_u16_vec(env: &mut Environment, from: Vec<u16>) -> id {
 ///
 /// TODO: Try to avoid converting from UTF-16 in more cases.
 pub fn to_rust_string(env: &mut Environment, string: id) -> Cow<'static, str> {
+    if string == nil {
+        return Cow::Borrowed("");
+    }
     // TODO: handle foreign subclasses of NSString
-    env.objc
-        .borrow_mut::<StringHostObject>(string)
+    let Some(host_object) = env.objc.get_host_object(string) else {
+        log!("Warning: to_rust_string called with unknown object {:?}", string);
+        return Cow::Borrowed("");
+    };
+    let Some(string_host_object) = host_object.as_any().downcast_ref::<StringHostObject>() else {
+        log!("Warning: to_rust_string: object {:?} is not a NSString", string);
+        return Cow::Borrowed("");
+    };
+    string_host_object
         .to_utf8()
-        .unwrap()
+        .unwrap_or_else(|e| {
+            log!("Warning: to_rust_string: invalid UTF-16 in object {:?}: {}", string, e);
+            Cow::Borrowed("")
+        })
 }
 
 /// Shortcut for host code, calls a callback once for each UTF-16 code-unit in a

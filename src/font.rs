@@ -130,21 +130,26 @@ impl Font {
 
     pub fn ascent(&self, font_size: f32) -> f32 {
         let v_metrics = self.font.v_metrics(scale(font_size));
-        v_metrics.ascent
+        if v_metrics.ascent.is_nan() { 0.0 } else { v_metrics.ascent }
     }
     pub fn descent(&self, font_size: f32) -> f32 {
         let v_metrics = self.font.v_metrics(scale(font_size));
-        v_metrics.descent
+        if v_metrics.descent.is_nan() { 0.0 } else { v_metrics.descent }
     }
 
     pub fn line_gap(&self, font_size: f32) -> f32 {
         let v_metrics = self.font.v_metrics(scale(font_size));
-        v_metrics.line_gap
+        if v_metrics.line_gap.is_nan() { 0.0 } else { v_metrics.line_gap }
     }
 
     fn line_height_and_gap(&self, font_size: f32) -> (f32, f32) {
         let v_metrics = self.font.v_metrics(scale(font_size));
-        (v_metrics.ascent - v_metrics.descent, v_metrics.line_gap)
+        let height = v_metrics.ascent - v_metrics.descent;
+        let gap = v_metrics.line_gap;
+        (
+            if height.is_nan() { 0.0 } else { height },
+            if gap.is_nan() { 0.0 } else { gap }
+        )
     }
 
     /// Calculate the width of a line. This does not handle newlines!
@@ -172,7 +177,8 @@ impl Font {
 
         // This rounding is also to emulate pixel_bounding_box(), same caveat
         // applies.
-        line_x_max.ceil() - line_x_min.floor()
+        let res = line_x_max.ceil() - line_x_min.floor();
+        if res.is_nan() { 0.0 } else { res }
     }
 
     /// Break text into lines with known widths.
@@ -185,10 +191,11 @@ impl Font {
         let mut lines = Vec::new();
 
         for line in text.lines() {
-            let Some((wrap_width, wrap_mode)) = wrap else {
+            let Some((mut wrap_width, wrap_mode)) = wrap else {
                 lines.push((self.calculate_line_width(font_size, line), line));
                 continue;
             };
+            if wrap_width.is_nan() { wrap_width = f32::INFINITY; }
 
             let unwrapped_line = line;
 
@@ -246,7 +253,7 @@ impl Font {
                         let line = &line[line_start..wrap_point];
                         let line_width = self
                             .calculate_line_width(font_size, trim_wrapped_line(wrap_mode, line));
-                        line_width.partial_cmp(&wrap_width).unwrap()
+                        line_width.partial_cmp(&wrap_width).unwrap_or(std::cmp::Ordering::Less)
                     });
                 let wrap_point_idx = match wrap_search_result {
                     Ok(i) => next_wrap_point_idx + i,
@@ -306,12 +313,19 @@ impl Font {
     ) -> (f32, f32) {
         let lines = self.break_lines(font_size, text, wrap);
 
-        let width = lines
+        let mut width = lines
             .iter()
             .fold(0f32, |widest, &(line_width, _line)| widest.max(line_width));
         let (line_height, line_gap) = self.line_height_and_gap(font_size);
-        let height =
+        let mut height =
             line_height * (lines.len() as f32) + line_gap * (lines.len().saturating_sub(1) as f32);
+
+        if width.is_nan() {
+            width = 0.0;
+        }
+        if height.is_nan() {
+            height = 0.0;
+        }
 
         (width, height)
     }

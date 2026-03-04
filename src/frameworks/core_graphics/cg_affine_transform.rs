@@ -206,22 +206,37 @@ impl CGAffineTransform {
         self == CGAffineTransformIdentity
     }
     pub fn make_rotation(angle: CGFloat) -> Self {
+        if angle.is_nan() {
+            return CGAffineTransformIdentity;
+        }
         Matrix::<3>::from(&Matrix::<2>::z_rotation(angle))
             .try_into()
-            .unwrap()
+            .unwrap_or(CGAffineTransformIdentity)
     }
     pub fn make_scale(x: CGFloat, y: CGFloat) -> Self {
+        if x.is_nan() || y.is_nan() {
+            return CGAffineTransformIdentity;
+        }
         Matrix::<3>::from(&Matrix::<2>::scale_2d(x, y))
             .try_into()
-            .unwrap()
+            .unwrap_or(CGAffineTransformIdentity)
     }
     pub fn make_translation(x: CGFloat, y: CGFloat) -> Self {
-        Matrix::<3>::translate_2d(x, y).try_into().unwrap()
+        if x.is_nan() || y.is_nan() {
+            return CGAffineTransformIdentity;
+        }
+        Matrix::<3>::translate_2d(x, y)
+            .try_into()
+            .unwrap_or(CGAffineTransformIdentity)
     }
     pub fn concat(self, other: Self) -> Self {
+        if self.a.is_nan() || self.b.is_nan() || self.c.is_nan() || self.d.is_nan() || self.tx.is_nan() || self.ty.is_nan() ||
+           other.a.is_nan() || other.b.is_nan() || other.c.is_nan() || other.d.is_nan() || other.tx.is_nan() || other.ty.is_nan() {
+            return CGAffineTransformIdentity;
+        }
         Matrix::<3>::multiply(&self.into(), &other.into())
             .try_into()
-            .unwrap()
+            .unwrap_or(CGAffineTransformIdentity)
     }
     pub fn rotate(self, angle: CGFloat) -> Self {
         Self::make_rotation(angle).concat(self)
@@ -233,6 +248,9 @@ impl CGAffineTransform {
         Self::make_translation(x, y).concat(self)
     }
     pub fn invert(self) -> Self {
+        if self.a.is_nan() || self.b.is_nan() || self.c.is_nan() || self.d.is_nan() || self.tx.is_nan() || self.ty.is_nan() {
+            return CGAffineTransformIdentity;
+        }
         let self_3x3: Matrix<3> = self.into();
         if let Some(inverse) = Matrix::<3>::from(&self_3x3).inverse() {
             // Matrix inversion sometimes produces values in the last column
@@ -240,21 +258,42 @@ impl CGAffineTransform {
             // The TryFrom check causes crashes in that case, and it is a waste
             // of energy to begin with as the result of inverting an affine
             // transformation matrix will also be affine.
-            affine_transform_from_matrix_unchecked(inverse)
+            let res = affine_transform_from_matrix_unchecked(inverse);
+            if res.a.is_nan() || res.b.is_nan() || res.c.is_nan() || res.d.is_nan() || res.tx.is_nan() || res.ty.is_nan() {
+                CGAffineTransformIdentity
+            } else {
+                res
+            }
         } else {
             self
         }
     }
 
     pub fn apply_to_point(self, point: CGPoint) -> CGPoint {
+        let mut x_in = point.x;
+        let mut y_in = point.y;
+        if x_in.is_nan() { x_in = 0.0; }
+        if y_in.is_nan() { y_in = 0.0; }
         // z = 1 makes the translation (in homogenous co-ordinates) be applied
-        let [x, y, _] = Matrix::<3>::transform(&self.into(), [point.x, point.y, 1.0]);
+        let [x, y, _] = Matrix::<3>::transform(&self.into(), [x_in, y_in, 1.0]);
+        let mut x = x;
+        let mut y = y;
+        if x.is_nan() { x = 0.0; }
+        if y.is_nan() { y = 0.0; }
         CGPoint { x, y }
     }
     pub fn apply_to_size(self, size: CGSize) -> CGSize {
+        let mut w_in = size.width;
+        let mut h_in = size.height;
+        if w_in.is_nan() { w_in = 0.0; }
+        if h_in.is_nan() { h_in = 0.0; }
         // z = 0 makes the translation (in homogenous co-ordinates) be ignored
         let [width, height, _] =
-            Matrix::<3>::transform(&self.into(), [size.width, size.height, 0.0]);
+            Matrix::<3>::transform(&self.into(), [w_in, h_in, 0.0]);
+        let mut width = width;
+        let mut height = height;
+        if width.is_nan() { width = 0.0; }
+        if height.is_nan() { height = 0.0; }
         CGSize { width, height }
     }
     pub fn apply_to_rect(self, rect: CGRect) -> CGRect {

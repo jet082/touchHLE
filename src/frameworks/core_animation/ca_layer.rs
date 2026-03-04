@@ -239,6 +239,15 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow::<CALayerHostObject>(this).bounds
 }
 - (())setBounds:(CGRect)bounds {
+    let mut bounds = bounds;
+    if bounds.origin.x.is_nan() || bounds.origin.y.is_nan() || bounds.size.width.is_nan() || bounds.size.height.is_nan() {
+        log!("Warning: [(CALayer*){:?} setBounds:{:?}] contains NaN, using 0.0 instead", this, bounds);
+        if bounds.origin.x.is_nan() { bounds.origin.x = 0.0; }
+        if bounds.origin.y.is_nan() { bounds.origin.y = 0.0; }
+        if bounds.size.width.is_nan() { bounds.size.width = 0.0; }
+        if bounds.size.height.is_nan() { bounds.size.height = 0.0; }
+    }
+
     let old_bounds = env.objc.borrow::<CALayerHostObject>(this).bounds;
     if bounds == old_bounds {
         return;
@@ -264,6 +273,13 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow::<CALayerHostObject>(this).position
 }
 - (())setPosition:(CGPoint)position {
+    let mut position = position;
+    if position.x.is_nan() || position.y.is_nan() {
+        log!("Warning: [(CALayer*){:?} setPosition:{:?}] contains NaN, using 0.0 instead", this, position);
+        if position.x.is_nan() { position.x = 0.0; }
+        if position.y.is_nan() { position.y = 0.0; }
+    }
+
     let old_position = env.objc.borrow::<CALayerHostObject>(this).position;
     if position == old_position {
         return;
@@ -285,6 +301,12 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow::<CALayerHostObject>(this).anchor_point
 }
 - (())setAnchorPoint:(CGPoint)anchor_point {
+    let mut anchor_point = anchor_point;
+    if anchor_point.x.is_nan() || anchor_point.y.is_nan() {
+        log!("Warning: [(CALayer*){:?} setAnchorPoint:{:?}] contains NaN, using 0.5 instead", this, anchor_point);
+        if anchor_point.x.is_nan() { anchor_point.x = 0.5; }
+        if anchor_point.y.is_nan() { anchor_point.y = 0.5; }
+    }
     env.objc.borrow_mut::<CALayerHostObject>(this).anchor_point = anchor_point;
 }
 - (CGAffineTransform)affineTransform {
@@ -320,6 +342,14 @@ pub const CLASSES: ClassExports = objc_classes! {
     })
 }
 - (())setFrame:(CGRect)frame {
+    let mut frame = frame;
+    if frame.origin.x.is_nan() || frame.origin.y.is_nan() || frame.size.width.is_nan() || frame.size.height.is_nan() {
+        log!("Warning: [(CALayer*){:?} setFrame:{:?}] contains NaN, using 0.0 instead", this, frame);
+        if frame.origin.x.is_nan() { frame.origin.x = 0.0; }
+        if frame.origin.y.is_nan() { frame.origin.y = 0.0; }
+        if frame.size.width.is_nan() { frame.size.width = 0.0; }
+        if frame.size.height.is_nan() { frame.size.height = 0.0; }
+    }
     let CALayerHostObject {
         anchor_point,
         affine_transform,
@@ -369,6 +399,12 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow::<CALayerHostObject>(this).opacity
 }
 - (())setOpacity:(f32)opacity {
+    let mut opacity = opacity;
+    if opacity.is_nan() {
+        log!("Warning: [(CALayer*){:?} setOpacity:NaN], using 1.0 instead", this);
+        opacity = 1.0;
+    }
+
     let old_opacity = env.objc.borrow::<CALayerHostObject>(this).opacity;
     if opacity == old_opacity {
         return;
@@ -416,6 +452,11 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow::<CALayerHostObject>(this).corner_radius
 }
 - (())setCornerRadius:(CGFloat)corner_radius {
+    let mut corner_radius = corner_radius;
+    if corner_radius.is_nan() {
+        log!("Warning: [(CALayer*){:?} setCornerRadius:NaN], using 0.0 instead", this);
+        corner_radius = 0.0;
+    }
     env.objc.borrow_mut::<CALayerHostObject>(this).corner_radius = corner_radius;
 }
 

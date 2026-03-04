@@ -118,6 +118,9 @@ pub const CLASSES: ClassExports = objc_classes! {
 
     // FIXME: This should also bump the window to the top of the list.
 
+    let frame: CGRect = msg![env; this frame];
+    log!("[(UIWindow*){:?} makeKeyAndVisible] frame: {:?}", this, frame);
+
     () = msg![env; this makeKeyWindow];
 
     // TODO: post UIWindowDidBecomeVisibleNotification

@@ -158,6 +158,24 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 
 - (())setContentOffset:(CGPoint)offset animated:(bool)_animated {
+    let mut offset = offset;
+    if offset.x.is_nan() || offset.y.is_nan() {
+        log!(
+            "Warning: [(UIScrollView*){:?} setContentOffset:{:?} animated:{}] contains NaN, using 0.0 instead",
+            this,
+            offset,
+            _animated
+        );
+        // Trace current PC to see where it comes from
+        use crate::cpu::Cpu;
+        log!("Guest state: PC=0x{:08x}, LR=0x{:08x}", env.cpu.regs()[Cpu::PC], env.cpu.regs()[Cpu::LR]);
+        if offset.x.is_nan() {
+            offset.x = 0.0;
+        }
+        if offset.y.is_nan() {
+            offset.y = 0.0;
+        }
+    }
     env.objc.borrow_mut::<UIScrollViewHostObject>(this).content_offset = offset;
     // Bounds origin should be equals to the content offset
     let mut bounds: CGRect = msg![env; this bounds];
@@ -167,9 +185,29 @@ pub const CLASSES: ClassExports = objc_classes! {
 }
 
 - (CGSize)contentSize {
-    env.objc.borrow::<UIScrollViewHostObject>(this).content_size
+    let mut res = env.objc.borrow::<UIScrollViewHostObject>(this).content_size;
+    if res.width.is_nan() { res.width = 0.0; }
+    if res.height.is_nan() { res.height = 0.0; }
+    res
 }
 - (())setContentSize:(CGSize)size {
+    let mut size = size;
+    if size.width.is_nan() || size.height.is_nan() {
+        log!(
+            "Warning: [(UIScrollView*){:?} setContentSize:{:?}] contains NaN, using 0.0 instead",
+            this,
+            size
+        );
+        // Trace current PC to see where it comes from
+        use crate::cpu::Cpu;
+        log!("Guest state: PC=0x{:08x}, LR=0x{:08x}", env.cpu.regs()[Cpu::PC], env.cpu.regs()[Cpu::LR]);
+        if size.width.is_nan() {
+            size.width = 0.0;
+        }
+        if size.height.is_nan() {
+            size.height = 0.0;
+        }
+    }
     env.objc.borrow_mut::<UIScrollViewHostObject>(this).content_size = size;
 }
 
@@ -177,6 +215,14 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow::<UIScrollViewHostObject>(this).content_inset
 }
 - (())setContentInset:(UIEdgeInsets)inset {
+    let mut inset = inset;
+    if inset.top.is_nan() || inset.left.is_nan() || inset.bottom.is_nan() || inset.right.is_nan() {
+        log!("Warning: [(UIScrollView*){:?} setContentInset:{:?}] contains NaN, using 0.0 instead", this, inset);
+        if inset.top.is_nan() { inset.top = 0.0; }
+        if inset.left.is_nan() { inset.left = 0.0; }
+        if inset.bottom.is_nan() { inset.bottom = 0.0; }
+        if inset.right.is_nan() { inset.right = 0.0; }
+    }
     env.objc.borrow_mut::<UIScrollViewHostObject>(this).content_inset = inset;
 }
 
@@ -184,6 +230,14 @@ pub const CLASSES: ClassExports = objc_classes! {
     env.objc.borrow::<UIScrollViewHostObject>(this).scroll_indicator_insets
 }
 - (())setScrollIndicatorInsets:(UIEdgeInsets)inset {
+    let mut inset = inset;
+    if inset.top.is_nan() || inset.left.is_nan() || inset.bottom.is_nan() || inset.right.is_nan() {
+        log!("Warning: [(UIScrollView*){:?} setScrollIndicatorInsets:{:?}] contains NaN, using 0.0 instead", this, inset);
+        if inset.top.is_nan() { inset.top = 0.0; }
+        if inset.left.is_nan() { inset.left = 0.0; }
+        if inset.bottom.is_nan() { inset.bottom = 0.0; }
+        if inset.right.is_nan() { inset.right = 0.0; }
+    }
     env.objc.borrow_mut::<UIScrollViewHostObject>(this).scroll_indicator_insets = inset;
 }
 
@@ -303,19 +357,28 @@ pub const CLASSES: ClassExports = objc_classes! {
     let y = new_location.y;
     let x = new_location.x;
 
-    let delta_y = y - prev_y;
-    let delta_x = x - prev_x;
+    let mut delta_y = y - prev_y;
+    let mut delta_x = x - prev_x;
+    if delta_y.is_nan() { delta_y = 0.0; }
+    if delta_x.is_nan() { delta_x = 0.0; }
 
-    let offset: CGPoint = msg![env; this contentOffset];
-    let content_size: CGSize = msg![env; this contentSize];
+    let mut offset: CGPoint = msg![env; this contentOffset];
+    if offset.x.is_nan() { offset.x = 0.0; }
+    if offset.y.is_nan() { offset.y = 0.0; }
+
+    let mut content_size: CGSize = msg![env; this contentSize];
+    if content_size.width.is_nan() { content_size.width = 0.0; }
+    if content_size.height.is_nan() { content_size.height = 0.0; }
 
     // Very rudimentary scrolling.
     // We emulate sliding up to scroll down like on the real iPhone.
     let mut new_content_offset: CGPoint = CGPoint { x: offset.x - delta_x, y: offset.y - delta_y };
 
     // Update content offset within bounds
-    new_content_offset.y = new_content_offset.y.min(content_size.height - bounds.size.height).max(0.0);
-    new_content_offset.x = new_content_offset.x.min(content_size.width - bounds.size.width).max(0.0);
+    let max_y = (content_size.height - bounds.size.height).max(0.0);
+    let max_x = (content_size.width - bounds.size.width).max(0.0);
+    new_content_offset.y = new_content_offset.y.clamp(0.0, max_y);
+    new_content_offset.x = new_content_offset.x.clamp(0.0, max_x);
 
     // Trigger rerender only if required.
     log_dbg!("content offset: old {:?}, new {:?}", offset, new_content_offset);

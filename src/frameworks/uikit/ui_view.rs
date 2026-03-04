@@ -27,7 +27,7 @@ use crate::frameworks::foundation::{ns_array, NSInteger, NSTimeInterval, NSUInte
 use crate::mem::MutVoidPtr;
 use crate::objc::{
     autorelease, id, msg, msg_class, msg_send, nil, objc_classes, release, retain,
-    todo_objc_setter, Class, ClassExports, HostObject, NSZonePtr, ObjC, SEL,
+    Class, ClassExports, HostObject, NSZonePtr, ObjC, SEL,
 };
 use crate::Environment;
 
@@ -73,6 +73,9 @@ pub(super) struct UIViewHostObject {
     clears_context_before_drawing: bool,
     user_interaction_enabled: bool,
     multiple_touch_enabled: bool,
+    autoresizes_subviews: bool,
+    autoresizing_mask: NSUInteger,
+    content_mode: NSInteger,
 }
 impl HostObject for UIViewHostObject {}
 impl Default for UIViewHostObject {
@@ -88,6 +91,9 @@ impl Default for UIViewHostObject {
             clears_context_before_drawing: true,
             user_interaction_enabled: true,
             multiple_touch_enabled: false,
+            autoresizes_subviews: true,
+            autoresizing_mask: 0, // UIViewAutoresizingNone
+            content_mode: 0,      // UIViewContentModeScaleToFill
         }
     }
 }
@@ -329,10 +335,16 @@ pub const CLASSES: ClassExports = objc_classes! {
     // TODO: decode the various other UIView properties
 
     let key_ns_string = get_static_str(env, "UIBounds");
-    let bounds: CGRect = msg![env; coder decodeCGRectForKey:key_ns_string];
+    let mut bounds: CGRect = msg![env; coder decodeCGRectForKey:key_ns_string];
+    if bounds.origin.x.is_nan() { bounds.origin.x = 0.0; }
+    if bounds.origin.y.is_nan() { bounds.origin.y = 0.0; }
+    if bounds.size.width.is_nan() { bounds.size.width = 0.0; }
+    if bounds.size.height.is_nan() { bounds.size.height = 0.0; }
 
     let key_ns_string = get_static_str(env, "UICenter");
-    let center: CGPoint = msg![env; coder decodeCGPointForKey:key_ns_string];
+    let mut center: CGPoint = msg![env; coder decodeCGPointForKey:key_ns_string];
+    if center.x.is_nan() { center.x = 0.0; }
+    if center.y.is_nan() { center.y = 0.0; }
 
     let key_ns_string = get_static_str(env, "UIFrame");
     if msg![env; coder containsValueForKey:key_ns_string] {
@@ -388,6 +400,16 @@ pub const CLASSES: ClassExports = objc_classes! {
     let key_ns_string = get_static_str(env, "UIMultipleTouchEnabled");
     let multi_touch_enabled: bool = msg![env; coder decodeBoolForKey:key_ns_string];
 
+    let key_ns_string = get_static_str(env, "UIAutoresizeSubviews");
+    let autoresizes_subviews: bool = if msg![env; coder containsValueForKey:key_ns_string] {
+        msg![env; coder decodeBoolForKey:key_ns_string]
+    } else {
+        true
+    };
+
+    let key_ns_string = get_static_str(env, "UIAutoresizingMask");
+    let autoresizing_mask: NSUInteger = msg![env; coder decodeIntegerForKey:key_ns_string];
+
     let key_ns_string = get_static_str(env, "UISubviews");
     let subviews: id = msg![env; coder decodeObjectForKey:key_ns_string];
     let subview_count: NSUInteger = msg![env; subviews count];
@@ -406,13 +428,19 @@ pub const CLASSES: ClassExports = objc_classes! {
         subview_count,
     );
 
-    () = msg![env; this setBounds:bounds];
-    () = msg![env; this setCenter:center];
+    if msg![env; coder containsValueForKey:(get_static_str(env, "UIFrame"))] {
+        // UIFrame already set above
+    } else {
+        () = msg![env; this setBounds:bounds];
+        () = msg![env; this setCenter:center];
+    }
     () = msg![env; this setHidden:hidden];
     () = msg![env; this setOpaque:opaque];
     () = msg![env; this setBackgroundColor:bg_color];
     () = msg![env; this setTag:tag];
     () = msg![env; this setMultipleTouchEnabled:multi_touch_enabled];
+    () = msg![env; this setAutoresizesSubviews:autoresizes_subviews];
+    () = msg![env; this setAutoresizingMask:autoresizing_mask];
 
     for i in 0..subview_count {
         let subview: id = msg![env; subviews objectAtIndex:i];
@@ -646,6 +674,9 @@ pub const CLASSES: ClassExports = objc_classes! {
         clears_context_before_drawing: _,
         user_interaction_enabled: _,
         multiple_touch_enabled: _,
+        autoresizes_subviews: _,
+        autoresizing_mask: _,
+        content_mode: _,
     } = std::mem::take(env.objc.borrow_mut(this));
 
     release(env, layer);
@@ -748,8 +779,96 @@ pub const CLASSES: ClassExports = objc_classes! {
     msg![env; layer bounds]
 }
 - (())setBounds:(CGRect)bounds {
+    let mut bounds = bounds;
+    if bounds.origin.x.is_nan() || bounds.origin.y.is_nan() || bounds.size.width.is_nan() || bounds.size.height.is_nan() {
+        log!("Warning: [(UIView*){:?} setBounds:{:?}] contains NaN, using 0.0 instead", this, bounds);
+        if bounds.origin.x.is_nan() { bounds.origin.x = 0.0; }
+        if bounds.origin.y.is_nan() { bounds.origin.y = 0.0; }
+        if bounds.size.width.is_nan() { bounds.size.width = 0.0; }
+        if bounds.size.height.is_nan() { bounds.size.height = 0.0; }
+    }
+
+    let old_bounds: CGRect = msg![env; this bounds];
     let layer = env.objc.borrow::<UIViewHostObject>(this).layer;
-    msg![env; layer setBounds:bounds]
+    () = msg![env; layer setBounds:bounds];
+
+    if bounds.size != old_bounds.size {
+        let autoresizes = env.objc.borrow::<UIViewHostObject>(this).autoresizes_subviews;
+        if autoresizes {
+            let old_size = old_bounds.size;
+            () = msg![env; this _autoresizeSubviewsWithOldSize:old_size];
+        }
+        () = msg![env; this layoutSubviews];
+    }
+}
+
+- (())_autoresizeSubviewsWithOldSize:(CGSize)old_size {
+    let mut old_size = old_size;
+    if old_size.width.is_nan() { old_size.width = 0.0; }
+    if old_size.height.is_nan() { old_size.height = 0.0; }
+
+    let new_size: CGSize = {
+        let bounds: CGRect = msg![env; this bounds];
+        bounds.size
+    };
+
+    let subviews = env.objc.borrow::<UIViewHostObject>(this).subviews.clone();
+    for subview in subviews {
+        let mask = env.objc.borrow::<UIViewHostObject>(subview).autoresizing_mask;
+        if mask == 0 {
+            continue;
+        }
+
+        let mut frame: CGRect = msg![env; subview frame];
+        let old_frame = frame;
+
+        let dw = new_size.width - old_size.width;
+        let dh = new_size.height - old_size.height;
+
+        // Horizontal autoresizing
+        let h_bits = mask & 0x7; // LeftMargin | Width | RightMargin
+        if h_bits != 0 {
+            let mut total_parts: f32 = 0.0;
+            if mask & 1 != 0 { total_parts += old_frame.origin.x; }
+            if mask & 2 != 0 { total_parts += old_frame.size.width; }
+            if mask & 4 != 0 {
+                total_parts += old_size.width - (old_frame.origin.x + old_frame.size.width);
+            }
+
+            if total_parts > 0.0 {
+                if mask & 1 != 0 {
+                    frame.origin.x += dw * (old_frame.origin.x / total_parts);
+                }
+                if mask & 2 != 0 {
+                    frame.size.width += dw * (old_frame.size.width / total_parts);
+                }
+            }
+        }
+
+        // Vertical autoresizing
+        let v_bits = (mask >> 3) & 0x7; // TopMargin | Height | BottomMargin
+        if v_bits != 0 {
+            let mut total_parts: f32 = 0.0;
+            if mask & 8 != 0 { total_parts += old_frame.origin.y; }
+            if mask & 16 != 0 { total_parts += old_frame.size.height; }
+            if mask & 32 != 0 {
+                total_parts += old_size.height - (old_frame.origin.y + old_frame.size.height);
+            }
+
+            if total_parts > 0.0 {
+                if mask & 8 != 0 {
+                    frame.origin.y += dh * (old_frame.origin.y / total_parts);
+                }
+                if mask & 16 != 0 {
+                    frame.size.height += dh * (old_frame.size.height / total_parts);
+                }
+            }
+        }
+
+        if frame != old_frame {
+            () = msg![env; subview setFrame:frame];
+        }
+    }
 }
 - (CGPoint)center {
     // FIXME: what happens if [layer anchorPoint] isn't (0.5, 0.5)?
@@ -765,8 +884,39 @@ pub const CLASSES: ClassExports = objc_classes! {
     msg![env; layer frame]
 }
 - (())setFrame:(CGRect)frame {
+    let mut frame = frame;
+    if frame.origin.x.is_nan() || frame.origin.y.is_nan() || frame.size.width.is_nan() || frame.size.height.is_nan() {
+        log!("Warning: [(UIView*){:?} setFrame:{:?}] contains NaN, using 0.0 instead", this, frame);
+        if frame.origin.x.is_nan() { frame.origin.x = 0.0; }
+        if frame.origin.y.is_nan() { frame.origin.y = 0.0; }
+        if frame.size.width.is_nan() { frame.size.width = 0.0; }
+        if frame.size.height.is_nan() { frame.size.height = 0.0; }
+    }
+
+    let old_size: CGSize = {
+        let bounds: CGRect = msg![env; this bounds];
+        let mut s = bounds.size;
+        if s.width.is_nan() { s.width = 0.0; }
+        if s.height.is_nan() { s.height = 0.0; }
+        s
+    };
     let layer = env.objc.borrow::<UIViewHostObject>(this).layer;
-    msg![env; layer setFrame:frame]
+    () = msg![env; layer setFrame:frame];
+    let new_size: CGSize = {
+        let bounds: CGRect = msg![env; this bounds];
+        let mut s = bounds.size;
+        if s.width.is_nan() { s.width = 0.0; }
+        if s.height.is_nan() { s.height = 0.0; }
+        s
+    };
+
+    if new_size != old_size {
+        let autoresizes = env.objc.borrow::<UIViewHostObject>(this).autoresizes_subviews;
+        if autoresizes {
+            () = msg![env; this _autoresizeSubviewsWithOldSize:old_size];
+        }
+        () = msg![env; this layoutSubviews];
+    }
 }
 - (CGAffineTransform)transform {
     let layer = env.objc.borrow::<UIViewHostObject>(this).layer;
@@ -777,8 +927,11 @@ pub const CLASSES: ClassExports = objc_classes! {
     msg![env; layer setAffineTransform:transform]
 }
 
+- (NSInteger)contentMode {
+    env.objc.borrow::<UIViewHostObject>(this).content_mode
+}
 - (())setContentMode:(NSInteger)content_mode { // should be UIViewContentMode
-    todo_objc_setter!(this, content_mode);
+    env.objc.borrow_mut::<UIViewHostObject>(this).content_mode = content_mode;
 }
 
 - (())setContentStretch:(CGRect)rect {
@@ -923,20 +1076,31 @@ pub const CLASSES: ClassExports = objc_classes! {
     msg![env; this_layer convertRect:rect toLayer:other_layer]
 }
 
+- (NSUInteger)autoresizingMask {
+    env.objc.borrow::<UIViewHostObject>(this).autoresizing_mask
+}
 - (())setAutoresizingMask:(NSUInteger)mask {
-    todo_objc_setter!(this, mask);
+    env.objc.borrow_mut::<UIViewHostObject>(this).autoresizing_mask = mask;
+}
+- (bool)autoresizesSubviews {
+    env.objc.borrow::<UIViewHostObject>(this).autoresizes_subviews
 }
 - (())setAutoresizesSubviews:(bool)enabled {
-    todo_objc_setter!(this, enabled);
+    env.objc.borrow_mut::<UIViewHostObject>(this).autoresizes_subviews = enabled;
 }
 
-- (CGSize)sizeThatFits:(CGSize)size {
-    // default implementation, subclasses can override
+- (CGSize)sizeThatFits:(CGSize)_size {
+    // The default implementation of this method returns the current size of the view.
+    let bounds: CGRect = msg![env; this bounds];
+    let mut size = bounds.size;
+    if size.width.is_nan() { size.width = 0.0; }
+    if size.height.is_nan() { size.height = 0.0; }
     size
 }
 - (())sizeToFit {
     let bounds: CGRect = msg![env; this bounds];
-    let size: CGSize = msg![env; this sizeThatFits:(bounds.size)];
+    let old_size = bounds.size;
+    let size: CGSize = msg![env; this sizeThatFits:old_size];
     () = msg![env; this setBounds:(CGRect {
         origin: bounds.origin,
         size

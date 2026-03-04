@@ -282,11 +282,15 @@ fn CGRectGetMinX(_env: &mut Environment, rect: CGRect) -> CGFloat {
 }
 
 fn CGRectGetMidX(_env: &mut Environment, rect: CGRect) -> CGFloat {
-    rect.origin.x + rect.size.width / 2.0
+    let mut res = rect.origin.x + rect.size.width / 2.0;
+    if res.is_nan() { res = rect.origin.x; }
+    res
 }
 
 fn CGRectGetMaxX(_env: &mut Environment, rect: CGRect) -> CGFloat {
-    rect.origin.x + rect.size.width
+    let mut res = rect.origin.x + rect.size.width;
+    if res.is_nan() { res = rect.origin.x; }
+    res
 }
 
 fn CGRectGetMinY(_env: &mut Environment, rect: CGRect) -> CGFloat {
@@ -294,28 +298,38 @@ fn CGRectGetMinY(_env: &mut Environment, rect: CGRect) -> CGFloat {
 }
 
 fn CGRectGetMidY(_env: &mut Environment, rect: CGRect) -> CGFloat {
-    rect.origin.y + rect.size.height / 2.0
+    let mut res = rect.origin.y + rect.size.height / 2.0;
+    if res.is_nan() { res = rect.origin.y; }
+    res
 }
 
 fn CGRectGetMaxY(_env: &mut Environment, rect: CGRect) -> CGFloat {
-    rect.origin.y + rect.size.height
+    let mut res = rect.origin.y + rect.size.height;
+    if res.is_nan() { res = rect.origin.y; }
+    res
 }
 
 fn CGRectGetHeight(_env: &mut Environment, rect: CGRect) -> CGFloat {
-    rect.size.height
+    let res = rect.size.height;
+    if res.is_nan() { 0.0 } else { res }
 }
 
 fn CGRectGetWidth(_env: &mut Environment, rect: CGRect) -> CGFloat {
-    rect.size.width
+    let res = rect.size.width;
+    if res.is_nan() { 0.0 } else { res }
 }
 
 fn CGRectMake(
     _env: &mut Environment,
-    x: CGFloat,
-    y: CGFloat,
-    width: CGFloat,
-    height: CGFloat,
+    mut x: CGFloat,
+    mut y: CGFloat,
+    mut width: CGFloat,
+    mut height: CGFloat,
 ) -> CGRect {
+    if x.is_nan() { x = 0.0; }
+    if y.is_nan() { y = 0.0; }
+    if width.is_nan() { width = 0.0; }
+    if height.is_nan() { height = 0.0; }
     CGRect {
         origin: CGPoint { x, y },
         size: CGSize { width, height },
@@ -335,34 +349,40 @@ fn CGRectIsNull(_env: &mut Environment, rect: CGRect) -> bool {
 }
 
 fn CGRectOffset(_env: &mut Environment, rect: CGRect, dx: CGFloat, dy: CGFloat) -> CGRect {
-    assert!(rect != CGRectNull); // TODO
+    if rect == CGRectNull {
+        return CGRectNull;
+    }
+    let mut x = rect.origin.x + dx;
+    let mut y = rect.origin.y + dy;
+    if x.is_nan() { x = rect.origin.x; }
+    if y.is_nan() { y = rect.origin.y; }
     CGRect {
-        origin: CGPoint {
-            x: rect.origin.x + dx,
-            y: rect.origin.y + dy,
-        },
+        origin: CGPoint { x, y },
         size: rect.size,
     }
 }
 
 fn CGRectInset(_env: &mut Environment, rect: CGRect, dx: CGFloat, dy: CGFloat) -> CGRect {
-    let res = CGRect {
-        origin: CGPoint {
-            x: rect.origin.x + dx,
-            y: rect.origin.y + dy,
-        },
-        size: CGSize {
-            width: rect.size.width - 2.0 * dx,
-            height: rect.size.height - 2.0 * dy,
-        },
-    };
-    assert!(res.size.width >= 0.0); // TODO return a null rectangle
-    assert!(res.size.height >= 0.0); // TODO return a null rectangle
+    if rect == CGRectNull {
+        return CGRectNull;
+    }
+    let x = rect.origin.x + dx;
+    let y = rect.origin.y + dy;
+    let width = rect.size.width - 2.0 * dx;
+    let height = rect.size.height - 2.0 * dy;
 
-    // center invariant
-    assert!(rect.origin.x + rect.size.width / 2.0 == res.origin.x + res.size.width / 2.0);
-    assert!(rect.origin.y + rect.size.height / 2.0 == res.origin.y + res.size.height / 2.0);
-    res
+    if x.is_nan() || y.is_nan() || width.is_nan() || height.is_nan() {
+        return rect;
+    }
+
+    if width < 0.0 || height < 0.0 {
+        return CGRectNull;
+    }
+
+    CGRect {
+        origin: CGPoint { x, y },
+        size: CGSize { width, height },
+    }
 }
 
 pub const FUNCTIONS: FunctionExports = &[
